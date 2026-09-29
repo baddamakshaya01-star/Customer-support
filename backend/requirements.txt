@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+python-dotenv
+groq
+openai
+numpy
+pytest
+httpx
+hindsight-client
