@@ -3,70 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Support Agent</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2">
+    <title>AURA — AI Customer Support Agent</title>
+    <meta name="description" content="AURA: AI-powered customer support agent with persistent memory, smart escalation, and real-time context awareness.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar / Memory Card -->
-        <aside class="memory-panel glass-panel">
-            <header>
-                <h2>Customer Memory</h2>
-                <div class="customer-selector">
-                    <select id="customer-select">
-                        <option value="cust-101">Alice Smith (Recurring Issue)</option>
-                        <option value="cust-102">Bob Jones (Frustrated)</option>
-                        <option value="cust-103">Charlie Brown (New Customer)</option>
-                        <option value="cust-104">Diana Prince (Normal)</option>
-                        <option value="cust-105">Eve Adams (Quirky Env)</option>
-                    </select>
+    <div class="app-wrapper">
+
+        <!-- ── Sidebar ─────────────────────────────────────────── -->
+        <aside class="sidebar" id="sidebar">
+
+            <!-- Brand -->
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                    </svg>
                 </div>
-            </header>
-            
-            <div class="memory-content" id="memory-content">
-                <!-- Populated by JS -->
-                <div class="loading-state">Select a customer...</div>
+                <span class="brand-name">AURA</span>
+                <span class="brand-tag">Support AI</span>
+            </div>
+
+            <!-- Customer Selector -->
+            <div class="sidebar-section">
+                <label class="section-label">Active Customer</label>
+                <div class="select-wrapper">
+                    <select id="customer-select">
+                        <option value="cust-101">Alice Smith</option>
+                        <option value="cust-102">Bob Jones</option>
+                        <option value="cust-103">Charlie Brown</option>
+                        <option value="cust-104">Diana Prince</option>
+                        <option value="cust-105">Eve Adams</option>
+                    </select>
+                    <svg class="select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+            </div>
+
+            <!-- Customer Profile Card -->
+            <div class="profile-card" id="profile-card">
+                <div class="profile-avatar" id="profile-avatar">A</div>
+                <div class="profile-info">
+                    <div class="profile-name" id="profile-name">Loading...</div>
+                    <div class="profile-meta" id="profile-plan">—</div>
+                </div>
+                <div class="profile-status">
+                    <div class="status-dot online"></div>
+                </div>
+            </div>
+
+            <!-- Environment Info -->
+            <div class="sidebar-section" id="env-section" style="display:none">
+                <label class="section-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    Environment
+                </label>
+                <div class="env-grid" id="env-grid"></div>
+            </div>
+
+            <!-- Frustration Meter -->
+            <div class="sidebar-section" id="frustration-section" style="display:none">
+                <label class="section-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                    Sentiment Score
+                </label>
+                <div class="frustration-meter">
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="meter-fill"></div>
+                    </div>
+                    <div class="meter-labels">
+                        <span>Calm</span>
+                        <span id="frustration-value">—</span>
+                        <span>Critical</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory Facts -->
+            <div class="sidebar-section memory-section" id="facts-section" style="display:none">
+                <label class="section-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                    Memory Facts
+                    <span class="facts-count" id="facts-count">0</span>
+                </label>
+                <div class="facts-list" id="facts-list"></div>
+            </div>
+
+            <!-- Recent Tickets -->
+            <div class="sidebar-section" id="tickets-section" style="display:none">
+                <label class="section-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Recent Tickets
+                </label>
+                <div class="tickets-list" id="tickets-list"></div>
+            </div>
+
+            <!-- Loading State -->
+            <div class="sidebar-loading" id="sidebar-loading">
+                <div class="pulse-ring"></div>
+                <span>Loading customer data…</span>
             </div>
         </aside>
 
-        <!-- Main Chat Area -->
-        <main class="chat-panel glass-panel">
+        <!-- ── Main Chat ────────────────────────────────────────── -->
+        <main class="chat-main">
+
+            <!-- Header -->
             <header class="chat-header">
-                <div>
-                    <h1>Support Chat</h1>
-                    <span class="status-indicator">Online</span>
+                <div class="header-left">
+                    <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    <div class="header-title">
+                        <h1>Support Chat</h1>
+                        <div class="header-subtitle" id="header-customer-name">Select a customer to begin</div>
+                    </div>
                 </div>
-                <div id="escalation-banner" class="escalation-banner hidden">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    Escalation Triggered
+                <div class="header-right">
+                    <div class="online-pill" id="online-status">
+                        <span class="status-dot online"></span>
+                        <span>Online</span>
+                    </div>
+                    <div id="escalation-banner" class="escalation-pill hidden">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Escalation Triggered
+                    </div>
                 </div>
             </header>
 
-            <div class="chat-history" id="chat-history">
-                <div class="message system">
-                    <p>Agent connected. Ready to assist.</p>
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chat-history">
+                <div class="welcome-state" id="welcome-state">
+                    <div class="welcome-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                        </svg>
+                    </div>
+                    <h2>AURA is ready</h2>
+                    <p>AI agent connected with persistent memory. Select a customer and start chatting.</p>
                 </div>
             </div>
 
-            <div class="chat-input-area">
-                <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-                <button id="send-btn" class="primary-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </button>
+            <!-- Input Area -->
+            <div class="chat-input-bar">
+                <div class="input-wrapper">
+                    <textarea
+                        id="message-input"
+                        placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+                        rows="1"
+                        maxlength="2000"
+                    ></textarea>
+                    <div class="input-actions">
+                        <span class="char-count" id="char-count">0 / 2000</span>
+                        <button id="send-btn" class="send-btn" title="Send message">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="input-hint">Powered by AURA · Memory-augmented AI</p>
             </div>
         </main>
     </div>
 
-    <!-- Escalation Modal -->
+    <!-- ── Escalation Modal ─────────────────────────────────────── -->
     <div id="escalation-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h2>Human Handoff Required</h2>
-            <div id="escalation-summary" class="markdown-body"></div>
-            <button id="close-modal" class="secondary-btn">Close</button>
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-icon warning">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div>
+                    <h2>Human Handoff Required</h2>
+                    <p class="modal-sub">This conversation has been flagged for escalation</p>
+                </div>
+                <button class="modal-close" id="close-modal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <label class="section-label" style="margin-bottom:12px; display:block">Handoff Summary</label>
+                <div id="escalation-summary" class="summary-box"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-modal-btn" class="btn-secondary">Dismiss</button>
+                <button class="btn-primary" onclick="document.getElementById('escalation-modal').classList.add('hidden')">Acknowledge</button>
+            </div>
         </div>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js"></script>
 </body>
 </html>
