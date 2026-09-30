@@ -45,6 +45,7 @@ body {
     overflow: hidden;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* ─── Layout ─────────────────────────────────────────────────── */
@@ -105,6 +106,7 @@ body {
     letter-spacing: -0.02em;
     background: linear-gradient(135deg, var(--purple-light), var(--cyan));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 .brand-tag {
@@ -152,6 +154,7 @@ body {
     font-size: 0.875rem;
     font-weight: 500;
     outline: none;
+    -webkit-appearance: none;
     appearance: none;
     cursor: pointer;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -440,6 +443,7 @@ body {
     margin-bottom: 10px;
     background: linear-gradient(135deg, var(--purple-light), var(--cyan));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 .welcome-state p { font-size: 0.875rem; color: var(--text-3); line-height: 1.6; }
