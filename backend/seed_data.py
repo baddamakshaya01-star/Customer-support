@@ -3,23 +3,23 @@ from database import SessionLocal, init_db, Customer, Ticket
 import uuid
 
 def seed():
-    # Ensure DB is created
-    # Remove existing DB for clean seed
-    if os.path.exists("./support_agent.db"):
-        os.remove("./support_agent.db")
-        
     init_db()
     db = SessionLocal()
+    # Clear existing rows safely without file lock issues
+    db.query(Ticket).delete()
+    db.query(Customer).delete()
+    db.commit()
 
-    # 1. Returning customer with a recurring issue
+    # 1. Returning customer with a recurring issue (same issue 3 times)
     c1 = Customer(
         id="cust-101", name="Alice Smith", email="alice@example.com",
         plan="Pro", os="Windows 11", product_version="v2.4", device="Desktop",
-        frustration_score=3.0
+        frustration_score=3.5
     )
     db.add(c1)
     db.add(Ticket(id=str(uuid.uuid4()), customer_id=c1.id, issue="App crashes on startup", status="Resolved", resolution="Cleared local cache in AppData"))
-    db.add(Ticket(id=str(uuid.uuid4()), customer_id=c1.id, issue="App crashes on startup again", status="Resolved", resolution="Reinstalled application"))
+    db.add(Ticket(id=str(uuid.uuid4()), customer_id=c1.id, issue="App crashes on startup", status="Resolved", resolution="Reinstalled application"))
+    db.add(Ticket(id=str(uuid.uuid4()), customer_id=c1.id, issue="App crashes on startup", status="Escalated", resolution=None))
 
     # 2. Angry customer triggering escalation
     c2 = Customer(

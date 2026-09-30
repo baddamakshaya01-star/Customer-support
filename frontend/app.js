@@ -81,7 +81,9 @@ document.getElementById('btn-new-chat')?.addEventListener('click', () => {
 });
 
 function switchPage(page) {
+    if (page === 'chat') page = 'livechat';
     currentPage = page;
+
     // Hide all pages
     document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
     // Show target
@@ -101,41 +103,91 @@ function switchPage(page) {
     };
     breadcrumbCurrent.textContent = labels[page] || page;
 
+    // Update URL hash cleanly
+    if (window.location.hash !== `#${page}`) {
+        history.replaceState(null, '', `#${page}`);
+    }
+
+    if (page === 'home') loadHomePage();
     if (page === 'analytics') loadAnalytics();
+    if (page === 'customers') loadCustomersPage();
+    if (page === 'tickets') loadTicketsPage();
+    if (page === 'escalations') loadEscalationsPage();
+    if (page === 'livechat') loadCustomerPicker();
 }
 
 // ─── Theme Toggle ───────────────────────────────────────────────
 document.getElementById('csb-theme-toggle')?.addEventListener('click', () => {
     document.body.classList.toggle('light-mode');
-    // In console we stay dark by default; this is a stub for future light mode
 });
 
-// ─── Customer Selection ─────────────────────────────────────────
-customerItems.forEach(item => {
-    item.addEventListener('click', () => selectCustomer(item.dataset.id));
-});
+// ─── Dynamic Customer Picker in Live Chat ────────────────────────
+let allPickerCustomers = [];
 
-lookupBtn.addEventListener('click', () => {
-    const val = lookupInput.value.trim();
-    if (!val) return;
-    // Try to match by id or email fragment
-    let matched = null;
-    document.querySelectorAll('.customer-item').forEach(item => {
-        const id = item.dataset.id;
-        const email = item.querySelector('.ci-email')?.textContent || '';
-        const name = item.querySelector('.ci-name')?.textContent || '';
-        if (id === val || email.includes(val) || name.toLowerCase().includes(val.toLowerCase())) {
-            matched = id;
-        }
+async function loadCustomerPicker() {
+    try {
+        const res = await fetch(`${API_URL}/customers`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        allPickerCustomers = await res.json();
+        renderCustomerPicker(allPickerCustomers);
+    } catch(err) {
+        console.error('Error loading customer picker:', err);
+    }
+}
+
+function renderCustomerPicker(customers) {
+    const listEl = document.getElementById('customer-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    customers.forEach(c => {
+        const initials = (c.name || 'C').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        const planClass = (c.plan || 'basic').toLowerCase();
+        const item = document.createElement('div');
+        item.className = `customer-item${currentCustomerId === c.id ? ' active' : ''}`;
+        item.id = `ci-${c.id}`;
+        item.dataset.id = c.id;
+        item.innerHTML = `
+            <div class="ci-avatar">${initials}</div>
+            <div class="ci-info">
+                <div class="ci-name">${escapeHTML(c.name)}</div>
+                <div class="ci-email">${escapeHTML(c.email || c.id)}</div>
+            </div>
+            <div class="ci-plan ${planClass}">${escapeHTML(c.plan || 'Plan')}</div>
+        `;
+        item.addEventListener('click', () => selectCustomer(c.id));
+        listEl.appendChild(item);
     });
-    if (matched) {
-        selectCustomer(matched);
+}
+
+function filterCustomerPicker() {
+    const val = (lookupInput?.value || '').trim().toLowerCase();
+    if (!val) {
+        renderCustomerPicker(allPickerCustomers);
+        return;
+    }
+    const filtered = allPickerCustomers.filter(c => 
+        (c.id && c.id.toLowerCase().includes(val)) ||
+        (c.email && c.email.toLowerCase().includes(val)) ||
+        (c.name && c.name.toLowerCase().includes(val))
+    );
+    renderCustomerPicker(filtered);
+    return filtered;
+}
+
+lookupInput?.addEventListener('input', filterCustomerPicker);
+
+lookupBtn?.addEventListener('click', () => {
+    const filtered = filterCustomerPicker();
+    if (filtered && filtered.length > 0) {
+        selectCustomer(filtered[0].id);
     } else {
-        showSystemMsg(`No customer found for "${val}"`);
+        const val = lookupInput.value.trim();
+        if (val) showSystemMsg(`No customer found for "${val}"`);
     }
 });
 
-lookupInput.addEventListener('keydown', (e) => {
+lookupInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') lookupBtn.click();
 });
 
@@ -230,6 +282,19 @@ function renderMemoryCard(data) {
         mcChartLine.setAttribute('points', pts);
     }
     mcFrustrationSec.style.display = 'block';
+
+    // Show Escalated banner if triggered
+    const hasEscTicket = tickets.some(t => t.status === 'Escalated');
+    if (score >= 4.0 || hasEscTicket) {
+        escalationBanner.classList.remove('hidden');
+        document.getElementById('escalation-banner-text').textContent =
+            `Escalated to human (${score.toFixed(1)}/5.0). Handoff summary ready.`;
+        chatEscPill.classList.remove('hidden');
+        escalationSummary.textContent = `Customer ${customer.name} is flagged for human handoff due to high frustration (${score.toFixed(1)}/5.0) or recurring ticket issues.`;
+    } else {
+        escalationBanner.classList.add('hidden');
+        chatEscPill.classList.add('hidden');
+    }
 
     // Tickets
     if (tickets.length > 0) {
@@ -485,117 +550,432 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ─── Analytics ──────────────────────────────────────────────────
-async function loadAnalytics() {
-    const customers = ['cust-101','cust-102','cust-103','cust-104','cust-105'];
-    let totalTickets = 0, totalFrustration = 0, escalations = 0, memories = 0;
-    const allFrustrations = [];
-    const issueCategories = {};
+// ─── Customers Page ─────────────────────────────────────────────
+let cachedCustomers = [];
 
+async function loadCustomersPage() {
+    const tbody = document.getElementById('customers-tbody');
+    const empty = document.getElementById('customers-empty');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-3)">Loading customers...</td></tr>`;
+    if (empty) empty.classList.add('hidden');
+
+    try {
+        const res = await fetch(`${API_URL}/customers`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        cachedCustomers = await res.json();
+        renderCustomersTable(cachedCustomers);
+    } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--red)">Failed to load customers: ${escapeHTML(err.message)}</td></tr>`;
+    }
+}
+
+function renderCustomersTable(customers) {
+    const tbody = document.getElementById('customers-tbody');
+    const empty = document.getElementById('customers-empty');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const query = (document.getElementById('customers-search')?.value || '').trim().toLowerCase();
+    const filtered = customers.filter(c => {
+        if (!query) return true;
+        const str = `${c.id} ${c.name} ${c.email || ''} ${c.plan || ''}`.toLowerCase();
+        return str.includes(query);
+    });
+
+    if (filtered.length === 0) {
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    filtered.forEach(c => {
+        const initials = (c.name || 'C').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        const score = c.frustration_score || 1.0;
+        let pillClass = 'green';
+        let pillText = `${score.toFixed(1)} Low`;
+        if (score >= 4.0) {
+            pillClass = 'red';
+            pillText = `${score.toFixed(1)} Critical`;
+        } else if (score >= 3.0) {
+            pillClass = 'amber';
+            pillText = `${score.toFixed(1)} Elevated`;
+        }
+
+        const planClass = (c.plan || 'basic').toLowerCase();
+        const tr = document.createElement('tr');
+        tr.className = 'clickable-row';
+        tr.innerHTML = `
+            <td>
+                <div class="table-customer-cell">
+                    <div class="table-avatar">${initials}</div>
+                    <div>
+                        <div class="table-cust-name">${escapeHTML(c.name)}</div>
+                        <div class="table-cust-email">${escapeHTML(c.email || c.id)}</div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="plan-pill ${planClass}">${escapeHTML(c.plan || 'Basic')}</span></td>
+            <td><strong style="color:var(--text)">${c.ticket_count || 0}</strong> tickets</td>
+            <td>
+                <span class="frustration-pill ${pillClass}">
+                    <span class="pill-dot"></span>
+                    ${pillText}
+                </span>
+            </td>
+            <td><span style="font-size:0.8rem;color:var(--text-3)">${c.last_contact || 'Never'}</span></td>
+            <td>
+                <button class="btn-table-action" data-id="${c.id}" title="Open conversation in Live Chat">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Chat
+                </button>
+            </td>
+        `;
+
+        tr.addEventListener('click', () => {
+            switchPage('livechat');
+            selectCustomer(c.id);
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+document.getElementById('customers-search')?.addEventListener('input', () => {
+    renderCustomersTable(cachedCustomers);
+});
+
+document.getElementById('customers-refresh-btn')?.addEventListener('click', loadCustomersPage);
+
+// ─── Tickets Page ───────────────────────────────────────────────
+let cachedTickets = [];
+let ticketFilter = 'all';
+
+async function loadTicketsPage() {
+    const tbody = document.getElementById('tickets-tbody');
+    const empty = document.getElementById('tickets-empty');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-3)">Loading tickets...</td></tr>`;
+    if (empty) empty.classList.add('hidden');
+
+    try {
+        const res = await fetch(`${API_URL}/tickets`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        cachedTickets = await res.json();
+        updateTicketCounts(cachedTickets);
+        renderTicketsTable();
+    } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--red)">Failed to load tickets: ${escapeHTML(err.message)}</td></tr>`;
+    }
+}
+
+function updateTicketCounts(tickets) {
+    const countAll = tickets.length;
+    const countOpen = tickets.filter(t => t.status === 'Open').length;
+    const countResolved = tickets.filter(t => t.status === 'Resolved').length;
+    const countEscalated = tickets.filter(t => t.status === 'Escalated').length;
+
+    const elAll = document.getElementById('count-all');
+    const elOpen = document.getElementById('count-open');
+    const elRes = document.getElementById('count-resolved');
+    const elEsc = document.getElementById('count-escalated');
+
+    if (elAll) elAll.textContent = countAll;
+    if (elOpen) elOpen.textContent = countOpen;
+    if (elRes) elRes.textContent = countResolved;
+    if (elEsc) elEsc.textContent = countEscalated;
+}
+
+function renderTicketsTable() {
+    const tbody = document.getElementById('tickets-tbody');
+    const empty = document.getElementById('tickets-empty');
+    const searchInput = document.getElementById('tickets-search');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const query = (searchInput?.value || '').trim().toLowerCase();
+    let filtered = cachedTickets.filter(t => {
+        if (ticketFilter !== 'all' && t.status !== ticketFilter) return false;
+        if (query) {
+            const str = `${t.id} ${t.customer_name} ${t.issue} ${t.resolution || ''}`.toLowerCase();
+            return str.includes(query);
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    filtered.forEach(t => {
+        const statusClass = (t.status || 'open').toLowerCase();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><span class="ticket-id-badge">#${escapeHTML(t.id)}</span></td>
+            <td>
+                <span class="table-cust-name" style="cursor:pointer;color:var(--indigo-light)" data-custid="${t.customer_id}">
+                    ${escapeHTML(t.customer_name)}
+                </span>
+            </td>
+            <td>
+                <div class="ticket-issue-block">
+                    <span class="ticket-issue-title">${escapeHTML(t.issue)}</span>
+                    ${t.resolution ? `<span class="ticket-resolution-text">✓ ${escapeHTML(t.resolution)}</span>` : ''}
+                </div>
+            </td>
+            <td><span class="status-pill ${statusClass}"><span class="pill-dot"></span>${escapeHTML(t.status)}</span></td>
+            <td><span style="font-size:0.8rem;color:var(--text-3)">${t.date || '—'}</span></td>
+            <td>
+                <button class="btn-table-action" data-custid="${t.customer_id}" title="Open customer in Chat">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Chat
+                </button>
+            </td>
+        `;
+
+        tr.querySelectorAll('[data-custid]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                switchPage('livechat');
+                selectCustomer(t.customer_id);
+            });
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+document.querySelectorAll('#ticket-filter-chips .filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#ticket-filter-chips .filter-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ticketFilter = btn.dataset.filter || 'all';
+        renderTicketsTable();
+    });
+});
+
+document.getElementById('tickets-search')?.addEventListener('input', renderTicketsTable);
+document.getElementById('tickets-refresh-btn')?.addEventListener('click', loadTicketsPage);
+
+// ─── Escalations Page ───────────────────────────────────────────
+let cachedEscalations = [];
+
+async function loadEscalationsPage() {
+    const grid = document.getElementById('escalations-grid');
+    const empty = document.getElementById('escalations-empty');
+    if (!grid) return;
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:36px;color:var(--text-3)">Loading escalation queue...</div>`;
+    if (empty) empty.classList.add('hidden');
+
+    try {
+        const res = await fetch(`${API_URL}/escalations`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        cachedEscalations = await res.json();
+
+        // Update badge counts
+        const count = cachedEscalations.length;
+        if (escCountBadge) {
+            escCountBadge.textContent = count;
+            escCountBadge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+        const escPageBadge = document.getElementById('esc-page-badge');
+        if (escPageBadge) escPageBadge.textContent = `${count} active`;
+        if (notifDot) notifDot.style.display = count > 0 ? 'block' : 'none';
+
+        renderEscalationsGrid(cachedEscalations);
+    } catch(err) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:36px;color:var(--red)">Failed to load escalations: ${escapeHTML(err.message)}</div>`;
+    }
+}
+
+function renderEscalationsGrid(escalations) {
+    const grid = document.getElementById('escalations-grid');
+    const empty = document.getElementById('escalations-empty');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (!escalations || escalations.length === 0) {
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    escalations.forEach(esc => {
+        const initials = (esc.customer_name || 'C').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        const score = esc.frustration_score || 1.0;
+        const pillClass = score >= 4.0 ? 'red' : 'amber';
+        const planClass = (esc.plan || 'basic').toLowerCase();
+
+        const card = document.createElement('div');
+        card.className = `esc-card${esc.status === 'resolved' ? ' resolved-card' : ''}`;
+        card.id = `esc-card-${esc.customer_id}`;
+        card.innerHTML = `
+            <div class="esc-card-header">
+                <div class="esc-cust-info">
+                    <div class="table-avatar" style="width:40px;height:40px;font-size:0.9rem">${initials}</div>
+                    <div>
+                        <div class="esc-cust-name">${escapeHTML(esc.customer_name)}</div>
+                        <div class="esc-cust-meta">${escapeHTML(esc.customer_email)} · <span class="plan-pill ${planClass}">${escapeHTML(esc.plan)}</span></div>
+                    </div>
+                </div>
+                <div>
+                    <span class="frustration-pill ${pillClass}">
+                        <span class="pill-dot"></span>
+                        ${score.toFixed(1)} Frustration
+                    </span>
+                </div>
+            </div>
+
+            <div class="esc-reasons">
+                <div class="esc-reasons-title">Escalation Trigger Reasons</div>
+                ${(esc.reasons || []).map(r => `
+                    <div class="esc-reason-pill">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        ${escapeHTML(r)}
+                    </div>
+                `).join('')}
+            </div>
+
+            <div>
+                <div class="esc-reasons-title" style="margin-bottom:6px">Generated Handoff Summary</div>
+                <div class="esc-summary-box">${escapeHTML(esc.handoff_summary || 'Handoff summary unavailable')}</div>
+            </div>
+
+            <div class="esc-card-footer">
+                <button class="btn-open-chat" data-id="${esc.customer_id}">
+                    Open in Chat
+                </button>
+                <button class="btn-assign" data-id="${esc.customer_id}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                    Assign to Human
+                </button>
+                <button class="btn-resolve" data-id="${esc.customer_id}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Mark Resolved
+                </button>
+            </div>
+        `;
+
+        card.querySelector('.btn-open-chat').addEventListener('click', () => {
+            switchPage('livechat');
+            selectCustomer(esc.customer_id);
+        });
+
+        card.querySelector('.btn-assign').addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = 'Assigning...';
+            try {
+                const res = await fetch(`${API_URL}/escalations/${esc.customer_id}/assign`, { method: 'PATCH' });
+                if (!res.ok) throw new Error('Assign failed');
+                btn.textContent = '✓ Assigned to Human';
+                setTimeout(() => loadEscalationsPage(), 600);
+            } catch(err) {
+                alert('Error assigning escalation: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Assign to Human';
+            }
+        });
+
+        card.querySelector('.btn-resolve').addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = 'Resolving...';
+            try {
+                const res = await fetch(`${API_URL}/escalations/${esc.customer_id}/resolve`, { method: 'PATCH' });
+                if (!res.ok) throw new Error('Resolve failed');
+                btn.textContent = '✓ Resolved';
+                setTimeout(() => {
+                    loadEscalationsPage();
+                    if (currentPage === 'analytics') loadAnalytics();
+                }, 600);
+            } catch(err) {
+                alert('Error resolving escalation: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Mark Resolved';
+            }
+        });
+
+        grid.appendChild(card);
+    });
+}
+
+document.getElementById('escalations-refresh-btn')?.addEventListener('click', loadEscalationsPage);
+
+// ─── Analytics Page ─────────────────────────────────────────────
+async function loadAnalytics() {
     document.getElementById('stat-num-tickets').textContent = '…';
     document.getElementById('stat-num-frustration').textContent = '…';
     document.getElementById('stat-num-esc').textContent = '…';
     document.getElementById('stat-num-memories').textContent = '…';
 
-    const results = await Promise.allSettled(
-        customers.map(id => fetch(`${API_URL}/customers/${id}/memory`).then(r => r.json()))
-    );
+    try {
+        const res = await fetch(`${API_URL}/analytics`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
-    results.forEach((result, i) => {
-        if (result.status !== 'fulfilled') return;
-        const data = result.value;
-        if (!data.customer) return;
+        document.getElementById('stat-num-tickets').textContent    = data.total_tickets || '0';
+        document.getElementById('stat-num-frustration').textContent = (data.avg_frustration || 0).toFixed(1);
+        document.getElementById('stat-num-esc').textContent         = `${data.escalation_rate || 0}%`;
+        document.getElementById('stat-num-memories').textContent    = data.total_customers || '0';
 
-        memories++;
-        const score = data.customer.frustration_score || 0;
-        totalFrustration += score;
-        allFrustrations.push({ id: customers[i], score });
-
-        const ticks = data.tickets || [];
-        totalTickets += ticks.length;
-        ticks.forEach(t => {
-            const cat = categorizeIssue(t.issue);
-            issueCategories[cat] = (issueCategories[cat] || 0) + 1;
-        });
-
-        const facts = data.memory_facts || [];
-        const hasEsc = facts.some(f => f.type?.toLowerCase().includes('escalat'));
-        if (hasEsc) escalations++;
-    });
-
-    const validCount = results.filter(r => r.status === 'fulfilled' && r.value?.customer).length || 1;
-    const avgFrustration = totalFrustration / validCount;
-    const escRate = validCount > 0 ? Math.round((escalations / validCount) * 100) : 0;
-
-    document.getElementById('stat-num-tickets').textContent    = totalTickets || '0';
-    document.getElementById('stat-num-frustration').textContent = avgFrustration.toFixed(1);
-    document.getElementById('stat-num-esc').textContent         = `${escRate}%`;
-    document.getElementById('stat-num-memories').textContent    = memories;
-
-    renderFrustrationChart(allFrustrations);
-    renderCategoryChart(issueCategories);
+        renderFrustrationChart(data.frustration_trend || []);
+        renderCategoryChartFromData(data.issue_categories || []);
+    } catch(err) {
+        console.error('Failed to load analytics:', err);
+    }
 }
 
-function categorizeIssue(issue) {
-    if (!issue) return 'Other';
-    const lower = issue.toLowerCase();
-    if (lower.includes('freeze') || lower.includes('crash')) return 'Crashes / Freezes';
-    if (lower.includes('login') || lower.includes('auth'))  return 'Login / Auth';
-    if (lower.includes('slow') || lower.includes('performance')) return 'Performance';
-    if (lower.includes('install') || lower.includes('setup'))    return 'Installation';
-    if (lower.includes('billing') || lower.includes('payment'))  return 'Billing';
-    return 'Other';
-}
-
-function renderFrustrationChart(data) {
+function renderFrustrationChart(trend) {
     const frustLine = document.getElementById('frust-line');
     const frustFill = document.getElementById('frust-fill');
     const frustEmpty = document.getElementById('frust-empty');
 
-    if (!data || data.length === 0) {
-        frustEmpty.style.display = 'flex';
+    if (!trend || trend.length === 0) {
+        if (frustEmpty) frustEmpty.style.display = 'flex';
         return;
     }
-    frustEmpty.style.display = 'none';
+    if (frustEmpty) frustEmpty.style.display = 'none';
 
-    const W = 400, H = 120, pad = 10;
-    const points = data.map((d, i) => {
-        const x = pad + (i / Math.max(data.length - 1, 1)) * (W - pad * 2);
+    const W = 400, H = 120, pad = 12;
+    const points = trend.map((d, i) => {
+        const x = pad + (i / Math.max(trend.length - 1, 1)) * (W - pad * 2);
         const y = H - pad - ((d.score / 5) * (H - pad * 2));
         return [x, y];
     });
 
     const ptStr = points.map(p => p.join(',')).join(' ');
-    frustLine.setAttribute('points', ptStr);
+    frustLine?.setAttribute('points', ptStr);
 
-    // Area fill path
     const first = points[0], last = points[points.length - 1];
-    const fillPath = `M${first[0]},${H - pad} L${ptStr.split(' ').map(p => p).join(' L')} L${last[0]},${H - pad} Z`;
-    frustFill.setAttribute('d', fillPath);
+    const fillPath = `M${first[0]},${H - pad} L${ptStr.split(' ').join(' L')} L${last[0]},${H - pad} Z`;
+    frustFill?.setAttribute('d', fillPath);
 }
 
-function renderCategoryChart(categories) {
+function renderCategoryChartFromData(categories) {
     const catList = document.getElementById('category-list');
     const catEmpty = document.getElementById('cat-empty');
+    if (!catList) return;
 
-    const entries = Object.entries(categories);
-    if (entries.length === 0) {
-        catEmpty.style.display = 'flex';
+    if (!categories || categories.length === 0) {
+        if (catEmpty) catEmpty.style.display = 'flex';
         return;
     }
-    catEmpty.style.display = 'none';
+    if (catEmpty) catEmpty.style.display = 'none';
 
-    const max = Math.max(...entries.map(([, v]) => v));
+    const max = Math.max(...categories.map(c => c.count), 1);
     const colors = ['#4F46E5','#06b6d4','#22c55e','#f59e0b','#ef4444','#8b5cf6'];
 
-    catList.innerHTML = entries.sort((a, b) => b[1] - a[1]).map(([cat, count], i) => `
+    catList.innerHTML = categories.map((c, i) => `
         <div class="cat-item">
             <div class="cat-item-header">
-                <span>${escapeHTML(cat)}</span>
-                <span>${count} ticket${count !== 1 ? 's' : ''}</span>
+                <span>${escapeHTML(c.category)}</span>
+                <span>${c.count} ticket${c.count !== 1 ? 's' : ''}</span>
             </div>
             <div class="cat-item-bar-wrap">
-                <div class="cat-item-bar" style="width:${(count / max) * 100}%;background:${colors[i % colors.length]}"></div>
+                <div class="cat-item-bar" style="width:${(c.count / max) * 100}%;background:${colors[i % colors.length]}"></div>
             </div>
         </div>
     `).join('');
@@ -616,10 +996,252 @@ function escapeHTML(str) {
         .replace(/'/g, '&#039;');
 }
 
+async function checkEscalationsBadge() {
+    try {
+        const res = await fetch(`${API_URL}/escalations`);
+        if (!res.ok) return;
+        const esc = await res.json();
+        const count = esc.length;
+        if (escCountBadge) {
+            escCountBadge.textContent = count;
+            escCountBadge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+        if (notifDot) notifDot.style.display = count > 0 ? 'block' : 'none';
+    } catch(e) {}
+}
+
 // ─── Keyframes not in CSS (spin for loading) ────────────────────
 const spinStyle = document.createElement('style');
 spinStyle.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
 document.head.appendChild(spinStyle);
 
-// ─── Init ───────────────────────────────────────────────────────
-// Show livechat page by default (already active via HTML)
+// ─── Home Overview Page ─────────────────────────────────────────
+let homeRefreshTimer = null;
+
+async function loadHomePage(isBackground = false) {
+    const statChats = document.getElementById('h-stat-chats');
+    const statEsc = document.getElementById('h-stat-escalations');
+    const statFrust = document.getElementById('h-stat-frustration');
+    const statMem = document.getElementById('h-stat-memories');
+    const convsList = document.getElementById('recent-convs-list');
+    const convsEmpty = document.getElementById('recent-convs-empty');
+    const escList = document.getElementById('home-esc-list');
+    const escEmpty = document.getElementById('home-esc-empty');
+    const escCountPill = document.getElementById('home-esc-count');
+
+    // Show skeletons on first/manual load
+    if (!isBackground) {
+        if (statChats) statChats.innerHTML = `<div class="skeleton-bar" style="width:48px;height:30px"></div>`;
+        if (statEsc) statEsc.innerHTML = `<div class="skeleton-bar" style="width:40px;height:30px"></div>`;
+        if (statFrust) statFrust.innerHTML = `<div class="skeleton-bar" style="width:68px;height:30px"></div>`;
+        if (statMem) statMem.innerHTML = `<div class="skeleton-bar" style="width:45px;height:30px"></div>`;
+        if (convsList) {
+            convsList.innerHTML = `
+                <div class="skeleton-conv-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-bar" style="width:40%"></div><div class="skeleton-bar" style="width:70%"></div></div><div class="skeleton-bar" style="width:50px"></div></div>
+                <div class="skeleton-conv-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-bar" style="width:50%"></div><div class="skeleton-bar" style="width:60%"></div></div><div class="skeleton-bar" style="width:50px"></div></div>
+                <div class="skeleton-conv-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-bar" style="width:35%"></div><div class="skeleton-bar" style="width:80%"></div></div><div class="skeleton-bar" style="width:50px"></div></div>
+            `;
+        }
+        if (escList) {
+            escList.innerHTML = `
+                <div class="skeleton-esc-card"><div class="skeleton-bar" style="width:45%"></div><div class="skeleton-bar" style="width:90%"></div></div>
+                <div class="skeleton-esc-card"><div class="skeleton-bar" style="width:40%"></div><div class="skeleton-bar" style="width:85%"></div></div>
+            `;
+        }
+    }
+
+    try {
+        const [analyticsRes, customersRes, ticketsRes, escalationsRes] = await Promise.all([
+            fetch(`${API_URL}/analytics`),
+            fetch(`${API_URL}/customers`),
+            fetch(`${API_URL}/tickets`),
+            fetch(`${API_URL}/escalations`)
+        ]);
+
+        const analytics = analyticsRes.ok ? await analyticsRes.json() : {};
+        const customers = customersRes.ok ? await customersRes.json() : [];
+        const tickets = ticketsRes.ok ? await ticketsRes.json() : [];
+        const escalations = escalationsRes.ok ? await escalationsRes.json() : [];
+
+        // 1. Render 4 Stat cards
+        const activeChats = analytics.active_chats !== undefined ? analytics.active_chats : customers.length;
+        const pendingEsc = analytics.pending_escalations !== undefined ? analytics.pending_escalations : escalations.length;
+        const avgFrust = analytics.avg_frustration !== undefined ? analytics.avg_frustration : 1.0;
+        const memStored = analytics.memories_stored !== undefined ? analytics.memories_stored : ((customers.length * 4) + tickets.length);
+
+        if (statChats) statChats.textContent = activeChats;
+        if (statEsc) statEsc.textContent = pendingEsc;
+        if (statFrust) statFrust.textContent = `${Number(avgFrust).toFixed(1)} / 5`;
+        if (statMem) statMem.textContent = memStored;
+
+        // Update badge counters across console
+        if (escCountBadge) {
+            escCountBadge.textContent = pendingEsc;
+            escCountBadge.style.display = pendingEsc > 0 ? 'inline-block' : 'none';
+        }
+        if (escCountPill) escCountPill.textContent = pendingEsc;
+        if (notifDot) notifDot.style.display = pendingEsc > 0 ? 'block' : 'none';
+
+        // 2. Render Recent Conversations (last 5)
+        if (convsList) {
+            convsList.innerHTML = '';
+            // Map customers to their latest ticket info
+            const customerTicketMap = {};
+            tickets.forEach(t => {
+                if (!customerTicketMap[t.customer_id]) {
+                    customerTicketMap[t.customer_id] = t;
+                }
+            });
+
+            const recentList = customers.slice(0, 5);
+            if (recentList.length === 0) {
+                if (convsEmpty) convsEmpty.classList.remove('hidden');
+            } else {
+                if (convsEmpty) convsEmpty.classList.add('hidden');
+                recentList.forEach(c => {
+                    const latestT = customerTicketMap[c.id];
+                    const issueTitle = latestT ? latestT.issue : 'General support inquiry';
+                    const initials = (c.name || 'C').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                    const score = c.frustration_score || 1.0;
+
+                    let pillClass = 'green';
+                    let pillText = `${score.toFixed(1)} Low`;
+                    if (score >= 4.0) {
+                        pillClass = 'red';
+                        pillText = `${score.toFixed(1)} Critical`;
+                    } else if (score >= 3.0) {
+                        pillClass = 'amber';
+                        pillText = `${score.toFixed(1)} Elevated`;
+                    }
+
+                    const item = document.createElement('div');
+                    item.className = 'recent-conv-item';
+                    item.title = `Click to chat with ${escapeHTML(c.name)}`;
+                    item.innerHTML = `
+                        <div class="recent-conv-left">
+                            <div class="recent-conv-avatar">${initials}</div>
+                            <div class="recent-conv-info">
+                                <div class="recent-conv-name">${escapeHTML(c.name)}</div>
+                                <div class="recent-conv-issue">${escapeHTML(issueTitle)}</div>
+                            </div>
+                        </div>
+                        <div class="recent-conv-right">
+                            <span class="frustration-pill ${pillClass}">
+                                <span class="pill-dot"></span>
+                                ${pillText}
+                            </span>
+                        </div>
+                    `;
+
+                    item.addEventListener('click', () => {
+                        switchPage('livechat');
+                        selectCustomer(c.id);
+                    });
+
+                    convsList.appendChild(item);
+                });
+            }
+        }
+
+        // 3. Render Escalation Queue panel
+        if (escList) {
+            escList.innerHTML = '';
+            if (escalations.length === 0) {
+                if (escEmpty) escEmpty.classList.remove('hidden');
+            } else {
+                if (escEmpty) escEmpty.classList.add('hidden');
+                escalations.forEach(esc => {
+                    const score = esc.frustration_score || 1.0;
+                    const pillClass = score >= 4.0 ? 'red' : 'amber';
+
+                    let oneLineSummary = 'Requires human operator attention.';
+                    if (esc.reasons && esc.reasons.length > 0) {
+                        oneLineSummary = esc.reasons.join(' · ');
+                    } else if (esc.handoff_summary) {
+                        const lines = esc.handoff_summary.split('\n').filter(l => l.trim().length > 0);
+                        oneLineSummary = lines[0] || 'Escalation triggered';
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'home-esc-card';
+                    card.title = 'Click to open Escalation Queue';
+                    card.innerHTML = `
+                        <div class="home-esc-card-top">
+                            <span class="home-esc-name">${escapeHTML(esc.customer_name)}</span>
+                            <span class="frustration-pill ${pillClass}">
+                                <span class="pill-dot"></span>
+                                ${score.toFixed(1)} Frustration
+                            </span>
+                        </div>
+                        <div class="home-esc-summary">${escapeHTML(oneLineSummary)}</div>
+                        <div class="home-esc-hint">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            Open in Escalation Queue →
+                        </div>
+                    `;
+
+                    card.addEventListener('click', () => {
+                        switchPage('escalations');
+                    });
+
+                    escList.appendChild(card);
+                });
+            }
+        }
+    } catch(err) {
+        console.error('Error loading home overview:', err);
+    }
+}
+
+// ─── 10-Second Auto Refresh Timer ───────────────────────────────
+if (homeRefreshTimer) clearInterval(homeRefreshTimer);
+homeRefreshTimer = setInterval(() => {
+    if (currentPage === 'home') {
+        loadHomePage(true);
+    }
+}, 10000);
+
+// ─── Routing & Init ─────────────────────────────────────────────
+function handleRouting() {
+    const pathname = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+
+    // Check pathname first (e.g. /console/chat, /console/customers, etc.)
+    if (pathname.includes('/console/chat') || pathname.endsWith('/chat')) return switchPage('livechat');
+    if (pathname.includes('/console/customers') || pathname.endsWith('/customers')) return switchPage('customers');
+    if (pathname.includes('/console/tickets') || pathname.endsWith('/tickets')) return switchPage('tickets');
+    if (pathname.includes('/console/escalations') || pathname.endsWith('/escalations')) return switchPage('escalations');
+    if (pathname.includes('/console/analytics') || pathname.endsWith('/analytics')) return switchPage('analytics');
+
+    // Check hash
+    const map = {
+        'home': 'home',
+        'chat': 'livechat',
+        'livechat': 'livechat',
+        'customers': 'customers',
+        'tickets': 'tickets',
+        'escalations': 'escalations',
+        'analytics': 'analytics',
+        'knowledge': 'knowledge',
+        'settings': 'settings'
+    };
+
+    // Default to 'home' for /console or empty hash
+    const target = map[hash] || 'home';
+    switchPage(target);
+}
+
+window.addEventListener('hashchange', handleRouting);
+
+// Initial Load
+document.addEventListener('DOMContentLoaded', () => {
+    loadCustomerPicker();
+    checkEscalationsBadge();
+    handleRouting();
+});
+
+// Also run immediately if script executes after DOM is ready
+loadCustomerPicker();
+checkEscalationsBadge();
+handleRouting();
+
