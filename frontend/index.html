@@ -3,199 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AURA — AI Customer Support Agent</title>
-    <meta name="description" content="AURA: AI-powered customer support agent with persistent memory, smart escalation, and real-time context awareness.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <title>RecallDesk AI — Never Make Customers Repeat Themselves</title>
+    <meta name="description" content="RecallDesk AI: AI-powered customer support with persistent memory. Your agent remembers every ticket, environment, and fix so each conversation picks up where the last one ended.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="landing.css">
 </head>
-<body>
-    <div class="app-wrapper">
+<body class="light-theme">
 
-        <!-- ── Sidebar ─────────────────────────────────────────── -->
-        <aside class="sidebar" id="sidebar">
-
-            <!-- Brand -->
-            <div class="brand">
-                <div class="brand-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ── Navbar ────────────────────────────────────────────── -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo" id="nav-logo-link">
+                <div class="nav-logo-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
                         <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
                     </svg>
                 </div>
-                <span class="brand-name">AURA</span>
-                <span class="brand-tag">Support AI</span>
+                <span class="nav-logo-text">RecallDesk AI</span>
+            </a>
+
+            <div class="nav-links" id="nav-links">
+                <a href="#features" class="nav-link" id="nav-features">Features</a>
+                <a href="#how-it-works" class="nav-link" id="nav-how">How it works</a>
+                <a href="#memory" class="nav-link" id="nav-memory">Memory</a>
+                <a href="#capabilities" class="nav-link" id="nav-capabilities">Capabilities</a>
             </div>
 
-            <!-- Customer Selector -->
-            <div class="sidebar-section">
-                <label class="section-label">Active Customer</label>
-                <div class="select-wrapper">
-                    <select id="customer-select">
-                        <option value="cust-101">Alice Smith</option>
-                        <option value="cust-102">Bob Jones</option>
-                        <option value="cust-103">Charlie Brown</option>
-                        <option value="cust-104">Diana Prince</option>
-                        <option value="cust-105">Eve Adams</option>
-                    </select>
-                    <svg class="select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </div>
-            </div>
-
-            <!-- Customer Profile Card -->
-            <div class="profile-card" id="profile-card">
-                <div class="profile-avatar" id="profile-avatar">A</div>
-                <div class="profile-info">
-                    <div class="profile-name" id="profile-name">Loading...</div>
-                    <div class="profile-meta" id="profile-plan">—</div>
-                </div>
-                <div class="profile-status">
-                    <div class="status-dot online"></div>
-                </div>
-            </div>
-
-            <!-- Environment Info -->
-            <div class="sidebar-section" id="env-section" style="display:none">
-                <label class="section-label">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                    Environment
-                </label>
-                <div class="env-grid" id="env-grid"></div>
-            </div>
-
-            <!-- Frustration Meter -->
-            <div class="sidebar-section" id="frustration-section" style="display:none">
-                <label class="section-label">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                    Sentiment Score
-                </label>
-                <div class="frustration-meter">
-                    <div class="meter-bar">
-                        <div class="meter-fill" id="meter-fill"></div>
-                    </div>
-                    <div class="meter-labels">
-                        <span>Calm</span>
-                        <span id="frustration-value">—</span>
-                        <span>Critical</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Memory Facts -->
-            <div class="sidebar-section memory-section" id="facts-section" style="display:none">
-                <label class="section-label">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
-                    Memory Facts
-                    <span class="facts-count" id="facts-count">0</span>
-                </label>
-                <div class="facts-list" id="facts-list"></div>
-            </div>
-
-            <!-- Recent Tickets -->
-            <div class="sidebar-section" id="tickets-section" style="display:none">
-                <label class="section-label">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    Recent Tickets
-                </label>
-                <div class="tickets-list" id="tickets-list"></div>
-            </div>
-
-            <!-- Loading State -->
-            <div class="sidebar-loading" id="sidebar-loading">
-                <div class="pulse-ring"></div>
-                <span>Loading customer data…</span>
-            </div>
-        </aside>
-
-        <!-- ── Main Chat ────────────────────────────────────────── -->
-        <main class="chat-main">
-
-            <!-- Header -->
-            <header class="chat-header">
-                <div class="header-left">
-                    <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
-                    <div class="header-title">
-                        <h1>Support Chat</h1>
-                        <div class="header-subtitle" id="header-customer-name">Select a customer to begin</div>
-                    </div>
-                </div>
-                <div class="header-right">
-                    <div class="online-pill" id="online-status">
-                        <span class="status-dot online"></span>
-                        <span>Online</span>
-                    </div>
-                    <div id="escalation-banner" class="escalation-pill hidden">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Escalation Triggered
-                    </div>
-                </div>
-            </header>
-
-            <!-- Chat Messages -->
-            <div class="chat-messages" id="chat-history">
-                <div class="welcome-state" id="welcome-state">
-                    <div class="welcome-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
-                            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
-                        </svg>
-                    </div>
-                    <h2>AURA is ready</h2>
-                    <p>AI agent connected with persistent memory. Select a customer and start chatting.</p>
-                </div>
-            </div>
-
-            <!-- Input Area -->
-            <div class="chat-input-bar">
-                <div class="input-wrapper">
-                    <textarea
-                        id="message-input"
-                        placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
-                        rows="1"
-                        maxlength="2000"
-                    ></textarea>
-                    <div class="input-actions">
-                        <span class="char-count" id="char-count">0 / 2000</span>
-                        <button id="send-btn" class="send-btn" title="Send message">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"/>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <p class="input-hint">Powered by AURA · Memory-augmented AI</p>
-            </div>
-        </main>
-    </div>
-
-    <!-- ── Escalation Modal ─────────────────────────────────────── -->
-    <div id="escalation-modal" class="modal-overlay hidden">
-        <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-icon warning">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                </div>
-                <div>
-                    <h2>Human Handoff Required</h2>
-                    <p class="modal-sub">This conversation has been flagged for escalation</p>
-                </div>
-                <button class="modal-close" id="close-modal">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <div class="nav-actions">
+                <button class="theme-toggle" id="theme-toggle" title="Toggle theme" aria-label="Toggle dark/light mode">
+                    <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                 </button>
-            </div>
-            <div class="modal-body">
-                <label class="section-label" style="margin-bottom:12px; display:block">Handoff Summary</label>
-                <div id="escalation-summary" class="summary-box"></div>
-            </div>
-            <div class="modal-footer">
-                <button id="close-modal-btn" class="btn-secondary">Dismiss</button>
-                <button class="btn-primary" onclick="document.getElementById('escalation-modal').classList.add('hidden')">Acknowledge</button>
+                <a href="/console.html" class="btn-outline" id="btn-start-chat">Start Chat</a>
+                <a href="/console.html" class="btn-primary-nav" id="btn-launch-console">Launch Console</a>
             </div>
         </div>
-    </div>
+    </nav>
 
-    <script src="app.js"></script>
+    <!-- ── Hero ─────────────────────────────────────────────── -->
+    <section class="hero" id="hero">
+        <div class="hero-inner">
+            <div class="hero-badge" id="hero-badge">
+                <span>AI-POWERED CUSTOMER SUPPORT</span>
+                <span class="badge-sep">|</span>
+                <span>Enterprise Ready</span>
+            </div>
+
+            <h1 class="hero-headline" id="hero-headline">
+                Never make customers repeat themselves
+                <span class="hero-accent">with AI memory</span>
+            </h1>
+
+            <p class="hero-sub" id="hero-sub">
+                Your support agent remembers every ticket, environment, and fix, so each<br>
+                conversation picks up where the last one ended.
+            </p>
+
+            <div class="hero-cta" id="hero-cta">
+                <a href="/console.html" class="btn-hero-primary" id="btn-get-started">Get Started</a>
+                <a href="/console.html" class="btn-hero-outline" id="btn-try-chat">Try Live Chat</a>
+            </div>
+
+            <div class="trust-points" id="trust-points">
+                <span class="trust-item">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Instant history recall
+                </span>
+                <span class="trust-dot">•</span>
+                <span class="trust-item">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Smart human escalation
+                </span>
+                <span class="trust-dot">•</span>
+                <span class="trust-item">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Tone that adapts to the customer
+                </span>
+            </div>
+        </div>
+
+        <!-- Browser Mockup -->
+        <div class="browser-mockup" id="browser-mockup">
+            <div class="browser-chrome">
+                <div class="browser-dots">
+                    <span class="bdot red"></span>
+                    <span class="bdot yellow"></span>
+                    <span class="bdot green"></span>
+                </div>
+                <div class="browser-url">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    recalldesk.ai/console
+                </div>
+            </div>
+            <div class="browser-content">
+                <div class="preview-sidebar">
+                    <div class="preview-logo">
+                        <div class="preview-logo-dot"></div>
+                        <span>RecallDesk AI</span>
+                    </div>
+                    <div class="preview-nav-item active">
+                        <span class="pni-dot"></span> Live Chat
+                        <span class="preview-badge">Active</span>
+                    </div>
+                    <div class="preview-nav-item"><span class="pni-dot"></span> Customers</div>
+                    <div class="preview-nav-item"><span class="pni-dot"></span> Tickets</div>
+                    <div class="preview-nav-item"><span class="pni-dot"></span> Analytics</div>
+                    <div class="preview-status">
+                        <span class="preview-status-dot"></span> Systems Operational
+                    </div>
+                </div>
+                <div class="preview-chat">
+                    <div class="preview-customer-tag">Customer: maya@acme.com</div>
+                    <div class="preview-msg user-msg">The app keeps freezing again after the update.</div>
+                    <div class="preview-msg agent-msg">
+                        Sorry about that, Maya. Last time a cache reset fixed this on Windows 11. Want to try that first?
+                        <div class="preview-memory-chip">Memory used: 3 tickets</div>
+                    </div>
+                    <div class="preview-escalation">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                        Escalated to human. Handoff summary ready.
+                    </div>
+                </div>
+                <div class="preview-memory">
+                    <div class="preview-memory-title">Memory card</div>
+                    <div class="preview-memory-env">Windows 11 · v4.2 · Pro plan</div>
+                    <div class="preview-memory-label">Recurring issue</div>
+                    <div class="preview-memory-val">App freeze (3 times)</div>
+                    <div class="preview-memory-label">Worked / failed</div>
+                    <div class="preview-worked">Cache reset</div>
+                    <div class="preview-failed">Reinstall</div>
+                    <div class="preview-memory-label">Frustration 4/5</div>
+                    <svg class="preview-chart" viewBox="0 0 80 30" fill="none">
+                        <polyline points="0,28 20,22 40,18 60,12 80,6" stroke="#7c6af7" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Features ──────────────────────────────────────────── -->
+    <section class="features-section" id="features">
+        <div class="section-inner">
+            <div class="section-tag">Features</div>
+            <h2 class="section-title">Everything your support team needs</h2>
+            <p class="section-sub">Built for enterprise scale, designed for human warmth.</p>
+            <div class="features-grid">
+                <div class="feature-card" id="feat-memory">
+                    <div class="feat-icon indigo">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                    </div>
+                    <h3>Persistent Memory</h3>
+                    <p>Every ticket, fix, and frustration point is remembered across sessions. Customers never have to explain themselves twice.</p>
+                </div>
+                <div class="feature-card" id="feat-escalation">
+                    <div class="feat-icon green">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <h3>Smart Escalation</h3>
+                    <p>AI detects rising frustration and routes to humans with a full handoff summary — before the customer asks.</p>
+                </div>
+                <div class="feature-card" id="feat-analytics">
+                    <div class="feat-icon cyan">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </div>
+                    <h3>Real-time Analytics</h3>
+                    <p>Live frustration tracking, repeat-question rate, and category breakdowns — all pulled live from your data.</p>
+                </div>
+                <div class="feature-card" id="feat-tone">
+                    <div class="feat-icon amber">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                    </div>
+                    <h3>Adaptive Tone</h3>
+                    <p>The AI senses customer mood in real time and adjusts its voice — more empathetic when frustrated, more efficient when calm.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── How it works ──────────────────────────────────────── -->
+    <section class="how-section" id="how-it-works">
+        <div class="section-inner">
+            <div class="section-tag">How it works</div>
+            <h2 class="section-title">From first message to resolved — in seconds</h2>
+            <div class="steps-row">
+                <div class="step" id="step-1">
+                    <div class="step-num">01</div>
+                    <h3>Customer connects</h3>
+                    <p>Agent loads the customer profile, past tickets, environment info, and memory facts instantly.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step" id="step-2">
+                    <div class="step-num">02</div>
+                    <h3>AI replies with context</h3>
+                    <p>Every response references what worked before, skipping the repeated explanation dance.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step" id="step-3">
+                    <div class="step-num">03</div>
+                    <h3>Memory updates live</h3>
+                    <p>New facts are extracted and stored automatically after each message, enriching future sessions.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step" id="step-4">
+                    <div class="step-num">04</div>
+                    <h3>Human handoff if needed</h3>
+                    <p>When escalation triggers, a human agent receives a full summary — no re-reading required.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Memory Section ────────────────────────────────────── -->
+    <section class="memory-section-landing" id="memory">
+        <div class="section-inner">
+            <div class="section-tag">Memory</div>
+            <h2 class="section-title">What the AI remembers, so you don't have to</h2>
+            <div class="memory-chips-row">
+                <div class="memory-chip-big"><span class="mchip-icon">🖥️</span> OS &amp; Environment</div>
+                <div class="memory-chip-big"><span class="mchip-icon">✅</span> Solutions that worked</div>
+                <div class="memory-chip-big"><span class="mchip-icon">❌</span> Approaches that failed</div>
+                <div class="memory-chip-big"><span class="mchip-icon">😤</span> Frustration history</div>
+                <div class="memory-chip-big"><span class="mchip-icon">🎫</span> Past ticket context</div>
+                <div class="memory-chip-big"><span class="mchip-icon">⚙️</span> Product version &amp; plan</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CTA Banner ────────────────────────────────────────── -->
+    <section class="cta-section" id="capabilities">
+        <div class="cta-inner">
+            <h2>Ready to eliminate repeated questions?</h2>
+            <p>Launch the console and see AI memory in action today.</p>
+            <a href="/console.html" class="btn-hero-primary large" id="btn-cta-launch">Launch Console →</a>
+        </div>
+    </section>
+
+    <!-- ── Footer ────────────────────────────────────────────── -->
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-logo">
+                <div class="nav-logo-icon small">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                    </svg>
+                </div>
+                <span>RecallDesk AI</span>
+            </div>
+            <p class="footer-copy">© 2025 RecallDesk AI. Built with persistent memory for humans.</p>
+        </div>
+    </footer>
+
+    <script src="landing.js"></script>
 </body>
 </html>

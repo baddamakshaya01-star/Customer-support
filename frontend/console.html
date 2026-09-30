@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecallDesk AI — Console</title>
+    <meta name="description" content="RecallDesk AI support console — live chat with persistent memory, analytics, and smart escalation.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="console-wrapper" id="console-wrapper">
+
+    <!-- ── Sidebar ────────────────────────────────────── -->
+    <aside class="console-sidebar" id="console-sidebar">
+        <div class="csb-brand">
+            <a href="/" class="csb-logo-link">
+                <div class="csb-logo-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                    </svg>
+                </div>
+                <span class="csb-brand-name">RecallDesk AI</span>
+            </a>
+        </div>
+
+        <nav class="csb-nav">
+            <a href="#" class="csb-nav-item" id="nav-home" data-page="home">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Home
+            </a>
+            <a href="#" class="csb-nav-item active" id="nav-livechat" data-page="livechat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Live Chat
+                <span class="csb-badge active-badge">Active</span>
+            </a>
+            <a href="#" class="csb-nav-item" id="nav-customers" data-page="customers">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Customers
+            </a>
+            <a href="#" class="csb-nav-item" id="nav-tickets" data-page="tickets">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Tickets
+            </a>
+            <a href="#" class="csb-nav-item" id="nav-escalations" data-page="escalations">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Escalations
+                <span class="csb-badge esc-badge" id="esc-count-badge" style="display:none">0</span>
+            </a>
+            <a href="#" class="csb-nav-item" id="nav-analytics" data-page="analytics">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Analytics
+            </a>
+            <a href="#" class="csb-nav-item" id="nav-knowledge" data-page="knowledge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                Knowledge Base
+            </a>
+            <a href="#" class="csb-nav-item" id="nav-settings" data-page="settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Settings
+            </a>
+        </nav>
+
+        <div class="csb-bottom">
+            <button class="csb-theme-toggle" id="csb-theme-toggle" title="Toggle theme">
+                <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <span class="csb-theme-label">Dark Mode</span>
+            </button>
+            <div class="csb-agent-card">
+                <div class="csb-agent-avatar">AG</div>
+                <div class="csb-agent-info">
+                    <div class="csb-agent-name">Support Agent</div>
+                    <div class="csb-agent-role">AI-Assisted</div>
+                </div>
+            </div>
+            <div class="csb-system-status">
+                <span class="csb-status-dot"></span>
+                Systems Operational
+            </div>
+        </div>
+    </aside>
+
+    <!-- ── Main Area ──────────────────────────────────── -->
+    <div class="console-main" id="console-main">
+
+        <!-- Top Bar -->
+        <header class="console-topbar" id="console-topbar">
+            <div class="topbar-left">
+                <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Toggle sidebar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="topbar-breadcrumb">
+                    <span class="breadcrumb-root">RecallDesk</span>
+                    <span class="breadcrumb-sep">›</span>
+                    <span class="breadcrumb-current" id="breadcrumb-current">Live Chat</span>
+                </div>
+            </div>
+            <div class="topbar-center">
+                <div class="topbar-search" id="topbar-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="search-input" placeholder="Search customers, tickets, memory..." autocomplete="off">
+                    <span class="search-shortcut">/</span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <button class="topbar-icon-btn" id="topbar-notif" title="Notifications">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="notif-dot" id="notif-dot" style="display:none"></span>
+                </button>
+                <div class="topbar-avatar" id="topbar-avatar">AG</div>
+                <button class="btn-new-chat" id="btn-new-chat">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New Chat
+                </button>
+            </div>
+        </header>
+
+        <!-- ── Pages ──────────────────────────────────── -->
+
+        <!-- Live Chat Page -->
+        <div class="page-content" id="page-livechat">
+            <div class="livechat-layout">
+
+                <!-- Column 1: Customer Lookup -->
+                <div class="lc-col lc-col-lookup" id="lc-col-lookup">
+                    <div class="lc-col-header">
+                        <h2 class="lc-col-title">Customer</h2>
+                    </div>
+                    <div class="lookup-body">
+                        <div class="lookup-search-row">
+                            <input type="text" id="lookup-input" class="lookup-input" placeholder="Email or Customer ID" autocomplete="off">
+                            <button class="lookup-btn" id="lookup-btn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            </button>
+                        </div>
+                        <div class="lookup-quick-label">Quick select</div>
+                        <div class="customer-list" id="customer-list">
+                            <div class="customer-item" data-id="cust-101" id="ci-cust-101">
+                                <div class="ci-avatar">AS</div>
+                                <div class="ci-info">
+                                    <div class="ci-name">Alice Smith</div>
+                                    <div class="ci-email">alice@acme.com</div>
+                                </div>
+                                <div class="ci-plan pro">Pro</div>
+                            </div>
+                            <div class="customer-item" data-id="cust-102" id="ci-cust-102">
+                                <div class="ci-avatar">BJ</div>
+                                <div class="ci-info">
+                                    <div class="ci-name">Bob Jones</div>
+                                    <div class="ci-email">bob@acme.com</div>
+                                </div>
+                                <div class="ci-plan basic">Basic</div>
+                            </div>
+                            <div class="customer-item" data-id="cust-103" id="ci-cust-103">
+                                <div class="ci-avatar">CB</div>
+                                <div class="ci-info">
+                                    <div class="ci-name">Charlie Brown</div>
+                                    <div class="ci-email">charlie@acme.com</div>
+                                </div>
+                                <div class="ci-plan enterprise">Enterprise</div>
+                            </div>
+                            <div class="customer-item" data-id="cust-104" id="ci-cust-104">
+                                <div class="ci-avatar">DP</div>
+                                <div class="ci-info">
+                                    <div class="ci-name">Diana Prince</div>
+                                    <div class="ci-email">diana@acme.com</div>
+                                </div>
+                                <div class="ci-plan pro">Pro</div>
+                            </div>
+                            <div class="customer-item" data-id="cust-105" id="ci-cust-105">
+                                <div class="ci-avatar">EA</div>
+                                <div class="ci-info">
+                                    <div class="ci-name">Eve Adams</div>
+                                    <div class="ci-email">eve@acme.com</div>
+                                </div>
+                                <div class="ci-plan basic">Basic</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2: Chat Window -->
+                <div class="lc-col lc-col-chat" id="lc-col-chat">
+                    <div class="lc-col-header">
+                        <div class="chat-header-left">
+                            <h2 class="lc-col-title" id="chat-col-title">Live Chat</h2>
+                            <span class="chat-customer-tag" id="chat-customer-tag" style="display:none"></span>
+                        </div>
+                        <div class="chat-header-right">
+                            <div class="online-pill" id="chat-online-pill">
+                                <span class="status-dot-sm online"></span>
+                                <span>Online</span>
+                            </div>
+                            <div class="escalation-pill-header hidden" id="chat-escalation-pill">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                                Escalated
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div class="chat-messages-area" id="chat-messages-area">
+                        <div class="chat-welcome" id="chat-welcome">
+                            <div class="chat-welcome-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                            </div>
+                            <h3>Select a customer to begin</h3>
+                            <p>Memory-augmented AI will load context automatically.</p>
+                        </div>
+                    </div>
+
+                    <!-- Escalation Banner -->
+                    <div class="escalation-banner hidden" id="escalation-banner">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                        <span id="escalation-banner-text">Escalated to human. Handoff summary ready.</span>
+                        <button class="banner-view-btn" id="banner-view-btn">View Summary</button>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="chat-input-zone" id="chat-input-zone">
+                        <div class="chat-input-wrap" id="chat-input-wrap">
+                            <textarea id="message-input" placeholder="Type a message… (Enter to send, Shift+Enter for newline)" rows="1" maxlength="2000" disabled></textarea>
+                            <div class="chat-input-actions">
+                                <span class="char-count-label" id="char-count">0 / 2000</span>
+                                <button id="send-btn" class="send-btn-console" title="Send message" disabled>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="input-hint-text">Powered by RecallDesk AI · Memory-augmented</p>
+                    </div>
+                </div>
+
+                <!-- Column 3: Memory Card -->
+                <div class="lc-col lc-col-memory" id="lc-col-memory">
+                    <div class="lc-col-header">
+                        <h2 class="lc-col-title">Memory card</h2>
+                    </div>
+                    <div class="memory-card-body" id="memory-card-body">
+                        <div class="memory-empty" id="memory-empty">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                            <p>No data yet</p>
+                            <span>Select a customer to load memory</span>
+                        </div>
+
+                        <!-- Profile (hidden until loaded) -->
+                        <div class="mc-section" id="mc-profile" style="display:none">
+                            <div class="mc-profile-row">
+                                <div class="mc-avatar" id="mc-avatar">?</div>
+                                <div>
+                                    <div class="mc-name" id="mc-name">—</div>
+                                    <div class="mc-email" id="mc-email">—</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mc-section" id="mc-env" style="display:none">
+                            <div class="mc-label">Environment</div>
+                            <div class="mc-env-bar" id="mc-env-bar">—</div>
+                        </div>
+
+                        <div class="mc-section" id="mc-tickets-sec" style="display:none">
+                            <div class="mc-label">Past Tickets</div>
+                            <div class="mc-tickets-list" id="mc-tickets-list"></div>
+                        </div>
+
+                        <div class="mc-section" id="mc-facts-sec" style="display:none">
+                            <div class="mc-label">Memory Facts <span class="mc-facts-count" id="mc-facts-count">0</span></div>
+                            <div class="mc-facts-list" id="mc-facts-list"></div>
+                        </div>
+
+                        <div class="mc-section" id="mc-frustration-sec" style="display:none">
+                            <div class="mc-label">Frustration Score</div>
+                            <div class="mc-frustration-row">
+                                <div class="mc-frustration-score" id="mc-frustration-score">—</div>
+                                <div class="mc-frustration-bar-wrap">
+                                    <div class="mc-frustration-bar" id="mc-frustration-bar"></div>
+                                </div>
+                            </div>
+                            <svg class="mc-chart" id="mc-chart" viewBox="0 0 120 40" fill="none">
+                                <polyline id="mc-chart-line" points="" stroke="#7c6af7" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Page -->
+        <div class="page-content hidden" id="page-analytics">
+            <div class="analytics-layout">
+                <div class="analytics-header">
+                    <h1 class="analytics-title">Analytics</h1>
+                    <p class="analytics-sub">Live data from your support sessions</p>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="stat-cards-row" id="stat-cards-row">
+                    <div class="stat-card" id="stat-total-tickets">
+                        <div class="stat-icon indigo">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                        </div>
+                        <div class="stat-num" id="stat-num-tickets">—</div>
+                        <div class="stat-label">Total Tickets</div>
+                    </div>
+                    <div class="stat-card" id="stat-avg-frustration">
+                        <div class="stat-icon amber">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                        </div>
+                        <div class="stat-num" id="stat-num-frustration">—</div>
+                        <div class="stat-label">Avg Frustration</div>
+                    </div>
+                    <div class="stat-card" id="stat-esc-rate">
+                        <div class="stat-icon red">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                        </div>
+                        <div class="stat-num" id="stat-num-esc">—</div>
+                        <div class="stat-label">Escalation Rate</div>
+                    </div>
+                    <div class="stat-card" id="stat-memories">
+                        <div class="stat-icon green">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                        </div>
+                        <div class="stat-num" id="stat-num-memories">—</div>
+                        <div class="stat-label">Active Customer Memories</div>
+                    </div>
+                </div>
+
+                <!-- Memory Impact Banner -->
+                <div class="impact-banner" id="impact-banner">
+                    <div class="impact-banner-icon">⚡</div>
+                    <div class="impact-banner-content">
+                        <div class="impact-banner-title">Memory Impact</div>
+                        <div class="impact-banner-sub">Repeat questions asked: <strong>Baseline ~8</strong> vs <strong class="highlight-green">With Memory ~0</strong></div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-card" id="frustration-chart-card">
+                        <div class="chart-card-header">
+                            <h3>Frustration Over Time</h3>
+                            <span class="chart-badge">Live</span>
+                        </div>
+                        <div class="chart-area" id="frustration-chart-area">
+                            <svg class="analytics-chart" id="frustration-svg" viewBox="0 0 400 120" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="frust-grad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#7c6af7" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="#7c6af7" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path id="frust-fill" d="" fill="url(#frust-grad)"/>
+                                <polyline id="frust-line" points="" stroke="#7c6af7" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="chart-empty-state" id="frust-empty">No data yet</div>
+                        </div>
+                    </div>
+                    <div class="chart-card" id="category-chart-card">
+                        <div class="chart-card-header">
+                            <h3>Issue Categories</h3>
+                        </div>
+                        <div class="category-list" id="category-list">
+                            <div class="cat-empty-state" id="cat-empty">No data yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder pages -->
+        <div class="page-content hidden" id="page-home">
+            <div class="placeholder-page">
+                <div class="placeholder-icon">🏠</div>
+                <h2>Home</h2>
+                <p>Dashboard overview coming soon. Use <strong>Live Chat</strong> to get started.</p>
+                <a href="#" class="btn-goto-chat" id="home-goto-chat">Go to Live Chat →</a>
+            </div>
+        </div>
+        <div class="page-content hidden" id="page-customers">
+            <div class="placeholder-page">
+                <div class="placeholder-icon">👥</div>
+                <h2>Customers</h2>
+                <p>Full customer directory coming soon. Use Live Chat to interact with customers.</p>
+            </div>
+        </div>
+        <div class="page-content hidden" id="page-tickets">
+            <div class="placeholder-page">
+                <div class="placeholder-icon">🎫</div>
+                <h2>Tickets</h2>
+                <p>Ticket management interface coming soon.</p>
+            </div>
+        </div>
+        <div class="page-content hidden" id="page-escalations">
+            <div class="placeholder-page">
+                <div class="placeholder-icon">⚠️</div>
+                <h2>Escalations</h2>
+                <p>Escalation queue coming soon. Monitor escalations from the Live Chat view.</p>
+            </div>
+        </div>
+        <div class="page-content hidden" id="page-knowledge">
+            <div class="placeholder-page">
+                <div class="placeholder-icon">📚</div>
+                <h2>Knowledge Base</h2>
+                <p>Knowledge base editor coming soon.</p>
+            </div>
+        </div>
+        <div class="page-content hidden" id="page-settings">
+            <div class="placeholder-page">
+                <div class="placeholder-icon">⚙️</div>
+                <h2>Settings</h2>
+                <p>Configuration panel coming soon.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Escalation Modal ──────────────────────────────── -->
+<div id="escalation-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div class="modal-icon warning">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+                <h2>Human Handoff Required</h2>
+                <p class="modal-sub">This conversation has been flagged for escalation</p>
+            </div>
+            <button class="modal-close" id="close-modal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <label class="mc-label" style="margin-bottom:12px;display:block">Handoff Summary</label>
+            <div id="escalation-summary" class="summary-box"></div>
+        </div>
+        <div class="modal-footer">
+            <button id="close-modal-btn" class="btn-secondary">Dismiss</button>
+            <button class="btn-primary" id="ack-modal-btn">Acknowledge</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
