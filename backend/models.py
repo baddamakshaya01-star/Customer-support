@@ -10,6 +10,7 @@ class ChatResponse(BaseModel):
     escalate: bool
     handoff_summary: Optional[str] = None
     extracted_data: Dict[str, Any]
+    suggested_article: Optional[Dict[str, Any]] = None
 
 class MemoryFactModel(BaseModel):
     type: str

@@ -4,11 +4,12 @@ from .escalation_service import check_escalation
 from .prompts import build_system_prompt, MEMORY_EXTRACTION_PROMPT
 
 from .settings_service import SettingsService
+from .kb_service import KBService
 
 def generate_agent_response(db: Session, llm, customer_id: str, user_message: str):
     customer = MemoryService.get_customer(db, customer_id)
     if not customer:
-        return "Customer not found.", False, None
+        return "Customer not found.", False, None, None
 
     settings = SettingsService.get_all(db)
     tickets = MemoryService.get_tickets(db, customer_id)
@@ -29,7 +30,16 @@ def generate_agent_response(db: Session, llm, customer_id: str, user_message: st
     # Check for escalation with dynamic settings
     escalate, summary = check_escalation(customer, tickets, memory_facts, settings=settings)
 
-    return response, escalate, summary
+    # Check for relevant knowledge base article match
+    combined_query = f"{user_message} " + " ".join(t.issue or "" for t in tickets if t.status in ["Open", "Escalated"])
+    suggested_article = KBService.match_article(db, combined_query)
+    if suggested_article:
+        link_markdown = f"\n\n📖 **Suggested Guide:** [{suggested_article['title']}](/console/knowledge?id={suggested_article['id']})"
+        if suggested_article["title"].lower() not in response.lower():
+            response += link_markdown
+
+    return response, escalate, summary, suggested_article
+
 
 def extract_memory_from_conversation(db: Session, llm, customer_id: str, user_message: str, agent_response: str):
     messages = [

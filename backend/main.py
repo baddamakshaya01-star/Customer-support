@@ -23,9 +23,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from typing import Optional
+from services.kb_service import KBService
+
 @app.on_event("startup")
 def on_startup():
     init_db()
+    db = next(get_db())
+    try:
+        KBService.seed_articles(db)
+    finally:
+        db.close()
 
 @app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
@@ -36,8 +44,8 @@ def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     # 1. Save user message
     MemoryService.save_interaction(db, request.customer_id, "user", request.message)
 
-    # 2. Generate Agent Response (incorporates memory and context)
-    agent_response_text, escalate, summary = generate_agent_response(
+    # 2. Generate Agent Response (incorporates memory, context, and knowledge base)
+    agent_response_text, escalate, summary, suggested_article = generate_agent_response(
         db, llm_service, request.customer_id, request.message
     )
 
@@ -53,7 +61,8 @@ def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
         "response": agent_response_text,
         "escalate": escalate,
         "handoff_summary": summary,
-        "extracted_data": extraction
+        "extracted_data": extraction,
+        "suggested_article": suggested_article
     }
 
 @app.get("/customers/{customer_id}/memory", response_model=MemoryResponse)
@@ -120,10 +129,22 @@ def update_settings_endpoint(payload: SettingsUpdateRequest, db: Session = Depen
         "message": "Settings saved successfully"
     }
 
+@app.get("/kb")
+def list_kb_articles(q: Optional[str] = None, category: Optional[str] = None, db: Session = Depends(get_db)):
+    return KBService.get_articles(db, q=q, category=category)
+
+@app.get("/kb/{article_id}")
+def get_kb_article(article_id: str, db: Session = Depends(get_db)):
+    article = KBService.get_article(db, article_id)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return article
+
 @app.post("/admin/reseed")
 def admin_reseed(db: Session = Depends(get_db)):
     from seed_data import seed
     seed()
+    KBService.seed_articles(db, force=True)
     memory_stats = SettingsService.get_memory_stats(db)
     return {
         "ok": True,
@@ -145,6 +166,7 @@ def admin_clear_memory(db: Session = Depends(get_db)):
             "memories_stored": 0
         }
     }
+
 
 def _fmt_date(dt):
     return dt.strftime("%Y-%m-%d") if dt else None

@@ -115,7 +115,9 @@ function switchPage(page) {
     if (page === 'escalations') loadEscalationsPage();
     if (page === 'livechat') loadCustomerPicker();
     if (page === 'settings') loadSettingsPage();
+    if (page === 'knowledge') loadKnowledgePage();
 }
+
 
 // ─── Theme Toggle ───────────────────────────────────────────────
 document.getElementById('csb-theme-toggle')?.addEventListener('click', () => {
@@ -386,7 +388,7 @@ function appendMsg(text, role) {
     return { wrap, bubble };
 }
 
-async function appendAgentMsg(text, memoryCount) {
+async function appendAgentMsg(text, memoryCount, suggestedArticle = null) {
     removeWelcome();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -414,6 +416,40 @@ async function appendAgentMsg(text, memoryCount) {
         bodyEl.appendChild(chip);
     }
 
+    // Suggested Article Card
+    if (suggestedArticle) {
+        const card = document.createElement('div');
+        card.className = 'suggested-article-card';
+        const catClass = (suggestedArticle.category || 'performance').toLowerCase();
+        card.innerHTML = `
+            <div class="suggested-card-left">
+                <div class="suggested-card-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </div>
+                <div class="suggested-card-info">
+                    <div class="suggested-badge-row">
+                        <span class="suggested-label-tag">Suggested Article</span>
+                        <span class="kb-cat-pill ${catClass}">${escapeHTML(suggestedArticle.category)}</span>
+                    </div>
+                    <div class="suggested-card-title">${escapeHTML(suggestedArticle.title)}</div>
+                    <div class="suggested-card-summary">${escapeHTML(suggestedArticle.summary || '')}</div>
+                </div>
+            </div>
+            <button type="button" class="btn-view-suggested-art">
+                View Guide
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        `;
+        card.querySelector('.btn-view-suggested-art')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openKbArticle(suggestedArticle.id);
+        });
+        card.addEventListener('click', () => {
+            openKbArticle(suggestedArticle.id);
+        });
+        bodyEl.appendChild(card);
+    }
+
     bodyEl.appendChild(timeEl);
     wrap.innerHTML = `<div class="msg-avatar">AI</div>`;
     wrap.appendChild(bodyEl);
@@ -429,6 +465,7 @@ async function appendAgentMsg(text, memoryCount) {
         await sleep(11);
     }
 }
+
 
 function showSystemMsg(text) { appendMsg(text, 'system'); }
 
@@ -485,7 +522,7 @@ async function sendMessage() {
 
         // Count memory facts used (approximate from extracted data)
         const memCount = (data.extracted_data?.memory_facts?.length) || previousFactCount;
-        await appendAgentMsg(data.response, memCount);
+        await appendAgentMsg(data.response, memCount, data.suggested_article);
 
         // Escalation
         if (data.escalate) {
@@ -1615,18 +1652,272 @@ document.getElementById('btn-clear-memory')?.addEventListener('click', () => {
     });
 });
 
+// ─── Knowledge Base Page Logic ───────────────────────────────────
+let allKbArticles = [];
+let currentKbCategory = 'All';
+let kbSearchDebounceTimer = null;
+
+async function loadKnowledgePage() {
+    try {
+        const queryParams = new URLSearchParams();
+        const searchInput = document.getElementById('kb-search-input');
+        const q = searchInput ? searchInput.value.trim() : '';
+
+        if (q) queryParams.set('q', q);
+        if (currentKbCategory && currentKbCategory !== 'All') {
+            queryParams.set('category', currentKbCategory);
+        }
+
+        const url = `${API_URL}/kb${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        allKbArticles = await res.json();
+
+        // Update counts
+        updateKbCategoryCounts();
+        renderKbGrid(allKbArticles);
+
+        // Check if URL has ?id= to open specific article
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('id');
+        if (articleId) {
+            openKbArticle(articleId);
+        }
+    } catch (err) {
+        console.error('Error loading knowledge base:', err);
+    }
+}
+
+async function updateKbCategoryCounts() {
+    try {
+        const searchInput = document.getElementById('kb-search-input');
+        const q = searchInput ? searchInput.value.trim() : '';
+        const url = `${API_URL}/kb${q ? '?q=' + encodeURIComponent(q) : ''}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const fullList = await res.json();
+
+        const totalEl = document.getElementById('kb-total-badge');
+        if (totalEl) totalEl.textContent = `${fullList.length} article${fullList.length === 1 ? '' : 's'}`;
+
+        const counts = { All: fullList.length, Performance: 0, Billing: 0, Sync: 0, Account: 0 };
+        fullList.forEach(a => {
+            const cat = a.category;
+            if (counts[cat] !== undefined) counts[cat]++;
+        });
+
+        document.getElementById('kb-count-all') && (document.getElementById('kb-count-all').textContent = counts.All);
+        document.getElementById('kb-count-performance') && (document.getElementById('kb-count-performance').textContent = counts.Performance);
+        document.getElementById('kb-count-billing') && (document.getElementById('kb-count-billing').textContent = counts.Billing);
+        document.getElementById('kb-count-sync') && (document.getElementById('kb-count-sync').textContent = counts.Sync);
+        document.getElementById('kb-count-account') && (document.getElementById('kb-count-account').textContent = counts.Account);
+    } catch(err) {
+        console.error('Error updating KB counts:', err);
+    }
+}
+
+function renderKbGrid(articles) {
+    const grid = document.getElementById('kb-articles-grid');
+    const emptyState = document.getElementById('kb-empty-state');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    if (!articles || articles.length === 0) {
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+
+    articles.forEach(art => {
+        const card = document.createElement('div');
+        card.className = 'kb-card';
+        card.dataset.id = art.id;
+
+        const catClass = (art.category || 'performance').toLowerCase();
+
+        card.innerHTML = `
+            <div class="kb-card-top">
+                <span class="kb-cat-pill ${catClass}">${escapeHTML(art.category)}</span>
+                <span class="kb-card-arrow">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </span>
+            </div>
+            <h3 class="kb-card-title">${escapeHTML(art.title)}</h3>
+            <p class="kb-card-summary">${escapeHTML(art.summary)}</p>
+            <div class="kb-card-footer">
+                <span class="kb-used-counter">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Used in ${art.used_count || 0} chats
+                </span>
+                <span class="kb-updated-date">${art.updated_at ? art.updated_at : 'Recently'}</span>
+            </div>
+        `;
+
+        card.addEventListener('click', () => {
+            openKbArticle(art.id);
+        });
+
+        grid.appendChild(card);
+    });
+}
+
+function formatArticleBody(text) {
+    if (!text) return '';
+    let html = escapeHTML(text);
+
+    // Headers
+    html = html.replace(/### (.*?)(?:<br>|\n|$)/g, '<h3>$1</h3>');
+    html = html.replace(/## (.*?)(?:<br>|\n|$)/g, '<h2>$1</h2>');
+
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // List items
+    html = html.replace(/(?:^|\n)- (.*?)(?=\n|$)/g, '<li>$1</li>');
+    html = html.replace(/(?:^|\n)\d+\. (.*?)(?=\n|$)/g, '<li>$1</li>');
+
+    // Paragraph breaks
+    html = html.replace(/\n\n/g, '<br><br>');
+
+    return html;
+}
+
+async function openKbArticle(articleId) {
+    const overlay = document.getElementById('kb-side-panel-overlay');
+    if (!overlay) return;
+
+    try {
+        const res = await fetch(`${API_URL}/kb/${articleId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const art = await res.json();
+
+        const catEl = document.getElementById('kb-panel-category');
+        const updatedEl = document.getElementById('kb-panel-updated');
+        const titleEl = document.getElementById('kb-panel-title');
+        const summaryEl = document.getElementById('kb-panel-summary');
+        const contentEl = document.getElementById('kb-panel-content');
+        const usedEl = document.getElementById('kb-panel-used-text');
+
+        if (catEl) {
+            catEl.textContent = art.category;
+            catEl.className = `kb-cat-pill ${(art.category || 'performance').toLowerCase()}`;
+        }
+        if (updatedEl) updatedEl.textContent = `Last updated: ${art.updated_at || 'Recent'}`;
+        if (titleEl) titleEl.textContent = art.title;
+        if (summaryEl) summaryEl.textContent = art.summary;
+        if (contentEl) contentEl.innerHTML = formatArticleBody(art.body);
+        if (usedEl) usedEl.textContent = `Used in ${art.used_count || 0} chats`;
+
+        // Configure copy button
+        const copyBtn = document.getElementById('kb-panel-copy-link-btn');
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                const link = `${window.location.origin}/console/knowledge?id=${art.id}`;
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(link).then(() => {
+                        showToast('Article link copied to clipboard', 'success');
+                    }).catch(() => {
+                        showToast('Link copied: ' + link, 'info');
+                    });
+                } else {
+                    showToast('Link: ' + link, 'info');
+                }
+            };
+        }
+
+        overlay.classList.remove('hidden');
+    } catch(err) {
+        console.error('Failed to load article:', err);
+        showToast('Error loading article', 'danger');
+    }
+}
+
+function closeKbArticle() {
+    const overlay = document.getElementById('kb-side-panel-overlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+
+// Side panel close triggers
+document.getElementById('kb-panel-close-btn')?.addEventListener('click', closeKbArticle);
+document.getElementById('kb-side-panel-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'kb-side-panel-overlay') {
+        closeKbArticle();
+    }
+});
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeKbArticle();
+    }
+});
+
+// Category Chips click
+document.querySelectorAll('#kb-category-chips .filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#kb-category-chips .filter-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentKbCategory = btn.dataset.category || 'All';
+        loadKnowledgePage();
+    });
+});
+
+// Search input handling
+const kbSearchInput = document.getElementById('kb-search-input');
+const kbSearchClear = document.getElementById('kb-search-clear');
+
+if (kbSearchInput) {
+    kbSearchInput.addEventListener('input', () => {
+        const val = kbSearchInput.value;
+        if (kbSearchClear) {
+            kbSearchClear.classList.toggle('hidden', val.length === 0);
+        }
+        clearTimeout(kbSearchDebounceTimer);
+        kbSearchDebounceTimer = setTimeout(() => {
+            loadKnowledgePage();
+        }, 220);
+    });
+}
+
+if (kbSearchClear) {
+    kbSearchClear.addEventListener('click', () => {
+        if (kbSearchInput) {
+            kbSearchInput.value = '';
+            kbSearchClear.classList.add('hidden');
+            loadKnowledgePage();
+            kbSearchInput.focus();
+        }
+    });
+}
+
+// Reset filters button in empty state
+document.getElementById('kb-empty-reset-btn')?.addEventListener('click', () => {
+    if (kbSearchInput) kbSearchInput.value = '';
+    if (kbSearchClear) kbSearchClear.classList.add('hidden');
+    currentKbCategory = 'All';
+    document.querySelectorAll('#kb-category-chips .filter-chip').forEach(b => {
+        b.classList.toggle('active', b.dataset.category === 'All');
+    });
+    loadKnowledgePage();
+});
+
 // ─── Routing & Init ─────────────────────────────────────────────
 function handleRouting() {
     const pathname = window.location.pathname.toLowerCase();
     const hash = window.location.hash.replace('#', '').toLowerCase();
 
-    // Check pathname first (e.g. /console/chat, /console/customers, /console/settings, etc.)
+    // Check pathname first (e.g. /console/chat, /console/customers, /console/settings, /console/knowledge, etc.)
     if (pathname.includes('/console/chat') || pathname.endsWith('/chat')) return switchPage('livechat');
     if (pathname.includes('/console/customers') || pathname.endsWith('/customers')) return switchPage('customers');
     if (pathname.includes('/console/tickets') || pathname.endsWith('/tickets')) return switchPage('tickets');
     if (pathname.includes('/console/escalations') || pathname.endsWith('/escalations')) return switchPage('escalations');
     if (pathname.includes('/console/analytics') || pathname.endsWith('/analytics')) return switchPage('analytics');
     if (pathname.includes('/console/settings') || pathname.endsWith('/settings')) return switchPage('settings');
+    if (pathname.includes('/console/knowledge') || pathname.endsWith('/knowledge')) return switchPage('knowledge');
+
 
     // Check hash
     const map = {

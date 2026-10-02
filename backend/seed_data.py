@@ -58,8 +58,13 @@ def seed():
     db.add(Ticket(id=str(uuid.uuid4()), customer_id=c5.id, issue="Export to PDF fails", status="Resolved", resolution="Disabled hardware acceleration in settings"))
 
     db.commit()
+    
+    from services.kb_service import KBService
+    KBService.seed_articles(db, force=True)
+
     db.close()
-    print("Database seeded with 5 customers!")
+    print("Database seeded with 5 customers and 8 knowledge base articles!")
 
 if __name__ == "__main__":
     seed()
+

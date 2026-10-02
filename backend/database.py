@@ -36,6 +36,16 @@ class Setting(Base):
     key = Column(String, primary_key=True)
     value = Column(Text)
 
+class KBArticle(Base):
+    __tablename__ = 'kb_articles'
+    id = Column(String, primary_key=True)
+    title = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    summary = Column(Text, nullable=False)
+    body = Column(Text, nullable=False)
+    used_count = Column(Integer, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
 
 engine_url = os.getenv("DB_PATH", "sqlite:///./support_agent.db")
 engine = create_engine(engine_url, connect_args={"check_same_thread": False})
