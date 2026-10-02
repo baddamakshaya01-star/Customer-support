@@ -114,11 +114,13 @@ function switchPage(page) {
     if (page === 'tickets') loadTicketsPage();
     if (page === 'escalations') loadEscalationsPage();
     if (page === 'livechat') loadCustomerPicker();
+    if (page === 'settings') loadSettingsPage();
 }
 
 // ─── Theme Toggle ───────────────────────────────────────────────
 document.getElementById('csb-theme-toggle')?.addEventListener('click', () => {
-    document.body.classList.toggle('light-mode');
+    const isLight = document.body.classList.contains('light-mode');
+    setTheme(isLight ? 'dark' : 'light');
 });
 
 // ─── Dynamic Customer Picker in Live Chat ────────────────────────
@@ -1201,17 +1203,430 @@ homeRefreshTimer = setInterval(() => {
     }
 }, 10000);
 
+// ─── Settings Page Logic ─────────────────────────────────────────
+let currentSettings = {
+    escalation_frustration_threshold: 4,
+    escalation_repeat_issue_threshold: 3,
+    auto_handoff_summary: true,
+    adapt_tone: true,
+    reference_past_tickets: true,
+    reply_style: 'Auto',
+    theme: 'dark'
+};
+
+// Frustration level descriptions
+const FRUSTRATION_LEVEL_MAP = {
+    1: 'Level 1 / 5 (Calm)',
+    2: 'Level 2 / 5 (Neutral)',
+    3: 'Level 3 / 5 (Moderate)',
+    4: 'Level 4 / 5 (High)',
+    5: 'Level 5 / 5 (Critical)'
+};
+
+function updateFrustrationBadge(val) {
+    const badge = document.getElementById('frustration-level-indicator');
+    if (!badge) return;
+    const rounded = Math.min(5, Math.max(1, Math.round(val)));
+    badge.textContent = FRUSTRATION_LEVEL_MAP[rounded] || `Level ${rounded} / 5`;
+    if (rounded >= 4) {
+        badge.className = 'stepper-badge';
+    } else {
+        badge.className = 'stepper-badge neutral';
+    }
+}
+
+function updateRepeatBadge(val) {
+    const badge = document.getElementById('repeat-level-indicator');
+    if (!badge) return;
+    const count = Math.max(1, parseInt(val, 10) || 1);
+    badge.textContent = `${count} Occurrence${count === 1 ? '' : 's'}`;
+}
+
+// Toast helper
+function showToast(message, type = 'success', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    let iconSvg = '';
+    if (type === 'success') {
+        iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+    } else if (type === 'danger') {
+        iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    } else {
+        iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+    }
+
+    toast.innerHTML = `
+        <span class="toast-icon">${iconSvg}</span>
+        <span class="toast-text">${message}</span>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-hiding');
+        setTimeout(() => toast.remove(), 250);
+    }, duration);
+}
+
+// Confirmation Dialog Modal Helper
+let activeConfirmAction = null;
+function showConfirmDialog({ title, message, subTitle = 'Please confirm to proceed', isDanger = false, confirmText = 'Confirm', onConfirm }) {
+    const modal = document.getElementById('confirm-action-modal');
+    if (!modal) {
+        if (confirm(`${title}\n\n${message}`)) {
+            if (typeof onConfirm === 'function') onConfirm();
+        }
+        return;
+    }
+
+    document.getElementById('confirm-modal-title').textContent = title;
+    document.getElementById('confirm-modal-message').textContent = message;
+    document.getElementById('confirm-modal-sub').textContent = subTitle;
+    
+    const iconEl = document.getElementById('confirm-modal-icon');
+    if (iconEl) {
+        iconEl.className = `modal-icon ${isDanger ? 'danger' : 'warning'}`;
+    }
+
+    const execBtn = document.getElementById('btn-execute-confirm');
+    if (execBtn) {
+        execBtn.textContent = confirmText;
+        execBtn.className = isDanger ? 'btn-primary btn-danger' : 'btn-primary';
+    }
+
+    activeConfirmAction = onConfirm;
+    modal.classList.remove('hidden');
+}
+
+function closeConfirmDialog() {
+    const modal = document.getElementById('confirm-action-modal');
+    if (modal) modal.classList.add('hidden');
+    activeConfirmAction = null;
+}
+
+document.getElementById('btn-cancel-confirm')?.addEventListener('click', closeConfirmDialog);
+document.getElementById('close-confirm-modal')?.addEventListener('click', closeConfirmDialog);
+document.getElementById('btn-execute-confirm')?.addEventListener('click', async () => {
+    if (typeof activeConfirmAction === 'function') {
+        const action = activeConfirmAction;
+        closeConfirmDialog();
+        await action();
+    } else {
+        closeConfirmDialog();
+    }
+});
+
+// Theme Management
+function setTheme(theme) {
+    const isLight = theme === 'light';
+    document.body.classList.toggle('light-mode', isLight);
+    
+    // Update theme segments in Settings
+    const darkBtn = document.getElementById('btn-theme-dark');
+    const lightBtn = document.getElementById('btn-theme-light');
+    if (darkBtn && lightBtn) {
+        darkBtn.classList.toggle('active', !isLight);
+        lightBtn.classList.toggle('active', isLight);
+    }
+
+    // Update sidebar theme label
+    const themeLabel = document.querySelector('.csb-theme-label');
+    if (themeLabel) {
+        themeLabel.textContent = isLight ? 'Light Mode' : 'Dark Mode';
+    }
+
+    currentSettings.theme = isLight ? 'light' : 'dark';
+}
+
+document.getElementById('btn-theme-dark')?.addEventListener('click', () => setTheme('dark'));
+document.getElementById('btn-theme-light')?.addEventListener('click', () => setTheme('light'));
+
+// Steppers Event Listeners
+const frustInput = document.getElementById('setting-frustration-thresh');
+const btnFrustMinus = document.getElementById('btn-frustration-minus');
+const btnFrustPlus = document.getElementById('btn-frustration-plus');
+
+if (btnFrustMinus && frustInput) {
+    btnFrustMinus.addEventListener('click', () => {
+        let val = parseInt(frustInput.value, 10) || 4;
+        if (val > 1) {
+            frustInput.value = val - 1;
+            updateFrustrationBadge(val - 1);
+        }
+    });
+}
+if (btnFrustPlus && frustInput) {
+    btnFrustPlus.addEventListener('click', () => {
+        let val = parseInt(frustInput.value, 10) || 4;
+        if (val < 5) {
+            frustInput.value = val + 1;
+            updateFrustrationBadge(val + 1);
+        }
+    });
+}
+if (frustInput) {
+    frustInput.addEventListener('change', () => {
+        let val = Math.min(5, Math.max(1, parseInt(frustInput.value, 10) || 4));
+        frustInput.value = val;
+        updateFrustrationBadge(val);
+    });
+}
+
+const repeatInput = document.getElementById('setting-repeat-thresh');
+const btnRepeatMinus = document.getElementById('btn-repeat-minus');
+const btnRepeatPlus = document.getElementById('btn-repeat-plus');
+
+if (btnRepeatMinus && repeatInput) {
+    btnRepeatMinus.addEventListener('click', () => {
+        let val = parseInt(repeatInput.value, 10) || 3;
+        if (val > 1) {
+            repeatInput.value = val - 1;
+            updateRepeatBadge(val - 1);
+        }
+    });
+}
+if (btnRepeatPlus && repeatInput) {
+    btnRepeatPlus.addEventListener('click', () => {
+        let val = parseInt(repeatInput.value, 10) || 3;
+        if (val < 10) {
+            repeatInput.value = val + 1;
+            updateRepeatBadge(val + 1);
+        }
+    });
+}
+if (repeatInput) {
+    repeatInput.addEventListener('change', () => {
+        let val = Math.min(10, Math.max(1, parseInt(repeatInput.value, 10) || 3));
+        repeatInput.value = val;
+        updateRepeatBadge(val);
+    });
+}
+
+// Load Settings from API
+async function loadSettingsPage() {
+    try {
+        const res = await fetch(`${API_URL}/settings`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        currentSettings = { ...currentSettings, ...data };
+
+        // 1. Escalation rules
+        const frustVal = data.escalation_frustration_threshold ?? 4;
+        if (frustInput) frustInput.value = frustVal;
+        updateFrustrationBadge(frustVal);
+
+        const repeatVal = data.escalation_repeat_issue_threshold ?? 3;
+        if (repeatInput) repeatInput.value = repeatVal;
+        updateRepeatBadge(repeatVal);
+
+        const autoSummaryEl = document.getElementById('setting-auto-summary');
+        if (autoSummaryEl) autoSummaryEl.checked = data.auto_handoff_summary !== false;
+
+        // 2. Agent behavior
+        const adaptToneEl = document.getElementById('setting-adapt-tone');
+        if (adaptToneEl) adaptToneEl.checked = data.adapt_tone !== false;
+
+        const refPastEl = document.getElementById('setting-ref-past-tickets');
+        if (refPastEl) refPastEl.checked = data.reference_past_tickets !== false;
+
+        const replyStyleEl = document.getElementById('setting-reply-style');
+        if (replyStyleEl && data.reply_style) replyStyleEl.value = data.reply_style;
+
+        // 3. Memory counters
+        if (data.memory_stats) {
+            renderMemoryCounters(data.memory_stats);
+        }
+
+        // 4. AI model status
+        if (data.ai_model) {
+            renderAiModelStatus(data.ai_model);
+        }
+
+        // 5. Appearance
+        if (data.theme) {
+            setTheme(data.theme);
+        }
+
+        const statusEl = document.getElementById('settings-save-status');
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="sync-dot"></span><span>Settings loaded from server</span>`;
+        }
+    } catch (err) {
+        console.error('Failed to load settings:', err);
+        showToast('Failed to load settings from server', 'danger');
+    }
+}
+
+function renderMemoryCounters(stats) {
+    const custEl = document.getElementById('settings-count-customers');
+    const tixEl = document.getElementById('settings-count-tickets');
+    const memEl = document.getElementById('settings-count-memories');
+
+    if (custEl) custEl.textContent = stats.customers ?? 0;
+    if (tixEl) tixEl.textContent = stats.tickets ?? 0;
+    if (memEl) memEl.textContent = stats.memories_stored ?? 0;
+}
+
+function renderAiModelStatus(ai) {
+    const provEl = document.getElementById('ai-model-provider');
+    const depEl = document.getElementById('ai-deployment-name');
+    const badgeEl = document.getElementById('ai-status-badge');
+    const textEl = document.getElementById('ai-status-text');
+
+    if (provEl) provEl.textContent = ai.provider || 'Azure OpenAI';
+    if (depEl) depEl.textContent = ai.deployment_name || 'Not configured';
+
+    if (badgeEl && textEl) {
+        const isConnected = !!ai.connected;
+        badgeEl.className = `badge-status-pill ${isConnected ? 'connected' : 'not-configured'}`;
+        textEl.textContent = ai.status || (isConnected ? 'Connected' : 'Not configured');
+    }
+}
+
+// Save Settings
+async function saveSettings() {
+    const saveBtn = document.getElementById('btn-save-settings');
+    const btnText = document.getElementById('save-btn-text');
+    const statusEl = document.getElementById('settings-save-status');
+
+    const frustVal = parseFloat(frustInput ? frustInput.value : 4) || 4;
+    const repeatVal = parseInt(repeatInput ? repeatInput.value : 3, 10) || 3;
+    const autoSummaryVal = document.getElementById('setting-auto-summary')?.checked ?? true;
+    const adaptToneVal = document.getElementById('setting-adapt-tone')?.checked ?? true;
+    const refPastVal = document.getElementById('setting-ref-past-tickets')?.checked ?? true;
+    const replyStyleVal = document.getElementById('setting-reply-style')?.value || 'Auto';
+    const themeVal = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+
+    const payload = {
+        escalation_frustration_threshold: frustVal,
+        escalation_repeat_issue_threshold: repeatVal,
+        auto_handoff_summary: autoSummaryVal,
+        adapt_tone: adaptToneVal,
+        reference_past_tickets: refPastVal,
+        reply_style: replyStyleVal,
+        theme: themeVal
+    };
+
+    try {
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            if (btnText) btnText.textContent = 'Saving...';
+        }
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="sync-dot" style="background:var(--amber)"></span><span>Saving configuration...</span>`;
+        }
+
+        const res = await fetch(`${API_URL}/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        currentSettings = { ...currentSettings, ...data };
+
+        showToast('Settings saved', 'success');
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="sync-dot"></span><span>Settings saved at ${timeStr}</span>`;
+        }
+
+        // Re-check escalation badge since thresholds may have changed
+        checkEscalationsBadge();
+    } catch (err) {
+        console.error('Error saving settings:', err);
+        showToast('Error saving settings: ' + err.message, 'danger');
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="sync-dot" style="background:var(--red)"></span><span>Error saving settings</span>`;
+        }
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            if (btnText) btnText.textContent = 'Save changes';
+        }
+    }
+}
+
+document.getElementById('btn-save-settings')?.addEventListener('click', saveSettings);
+
+// Reload demo data button
+document.getElementById('btn-reload-demo')?.addEventListener('click', () => {
+    showConfirmDialog({
+        title: 'Reload Demo Data',
+        subTitle: 'Reset customer database to initial state',
+        message: 'Are you sure you want to reload demo data? This will re-run the seed script and restore the default demo customers and tickets.',
+        confirmText: 'Reload Data',
+        isDanger: false,
+        onConfirm: async () => {
+            try {
+                showToast('Reloading demo data...', 'info', 2000);
+                const res = await fetch(`${API_URL}/admin/reseed`, { method: 'POST' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.memory_stats) {
+                    renderMemoryCounters(data.memory_stats);
+                }
+                loadCustomerPicker();
+                checkEscalationsBadge();
+                showToast('Demo data reloaded successfully', 'success');
+            } catch (err) {
+                console.error('Error reseeding demo data:', err);
+                showToast('Failed to reload demo data: ' + err.message, 'danger');
+            }
+        }
+    });
+});
+
+// Clear all memory button
+document.getElementById('btn-clear-memory')?.addEventListener('click', () => {
+    showConfirmDialog({
+        title: 'Clear All Memory',
+        subTitle: 'Permanent deletion of local database records',
+        message: 'Are you sure you want to clear all memory? All customer records, tickets, and associated conversation history will be permanently deleted.',
+        confirmText: 'Clear Memory',
+        isDanger: true,
+        onConfirm: async () => {
+            try {
+                showToast('Clearing all memory...', 'info', 2000);
+                const res = await fetch(`${API_URL}/admin/clear-memory`, { method: 'POST' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.memory_stats) {
+                    renderMemoryCounters(data.memory_stats);
+                }
+                clearChat();
+                currentCustomerId = null;
+                deselectAllCustomers();
+                loadCustomerPicker();
+                checkEscalationsBadge();
+                showToast('All memory cleared', 'danger');
+            } catch (err) {
+                console.error('Error clearing memory:', err);
+                showToast('Failed to clear memory: ' + err.message, 'danger');
+            }
+        }
+    });
+});
+
 // ─── Routing & Init ─────────────────────────────────────────────
 function handleRouting() {
     const pathname = window.location.pathname.toLowerCase();
     const hash = window.location.hash.replace('#', '').toLowerCase();
 
-    // Check pathname first (e.g. /console/chat, /console/customers, etc.)
+    // Check pathname first (e.g. /console/chat, /console/customers, /console/settings, etc.)
     if (pathname.includes('/console/chat') || pathname.endsWith('/chat')) return switchPage('livechat');
     if (pathname.includes('/console/customers') || pathname.endsWith('/customers')) return switchPage('customers');
     if (pathname.includes('/console/tickets') || pathname.endsWith('/tickets')) return switchPage('tickets');
     if (pathname.includes('/console/escalations') || pathname.endsWith('/escalations')) return switchPage('escalations');
     if (pathname.includes('/console/analytics') || pathname.endsWith('/analytics')) return switchPage('analytics');
+    if (pathname.includes('/console/settings') || pathname.endsWith('/settings')) return switchPage('settings');
 
     // Check hash
     const map = {

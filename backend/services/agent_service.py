@@ -3,16 +3,19 @@ from .memory_service import MemoryService
 from .escalation_service import check_escalation
 from .prompts import build_system_prompt, MEMORY_EXTRACTION_PROMPT
 
+from .settings_service import SettingsService
+
 def generate_agent_response(db: Session, llm, customer_id: str, user_message: str):
     customer = MemoryService.get_customer(db, customer_id)
     if not customer:
         return "Customer not found.", False, None
 
+    settings = SettingsService.get_all(db)
     tickets = MemoryService.get_tickets(db, customer_id)
     memory_facts = MemoryService.get_memory_facts(db, customer_id)
     recent_interactions = MemoryService.get_interactions(db, customer_id, limit=5)
 
-    system_prompt = build_system_prompt(customer, tickets, memory_facts, recent_interactions)
+    system_prompt = build_system_prompt(customer, tickets, memory_facts, recent_interactions, settings=settings)
     
     messages = [{"role": "system", "content": system_prompt}]
     for interaction in recent_interactions:
@@ -23,8 +26,8 @@ def generate_agent_response(db: Session, llm, customer_id: str, user_message: st
     # Get LLM response
     response = llm.get_chat_response(messages)
     
-    # Check for escalation
-    escalate, summary = check_escalation(customer, tickets, memory_facts)
+    # Check for escalation with dynamic settings
+    escalate, summary = check_escalation(customer, tickets, memory_facts, settings=settings)
 
     return response, escalate, summary
 

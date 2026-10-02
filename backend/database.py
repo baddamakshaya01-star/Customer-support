@@ -31,6 +31,12 @@ class Ticket(Base):
     
     customer = relationship("Customer", back_populates="tickets")
 
+class Setting(Base):
+    __tablename__ = 'settings'
+    key = Column(String, primary_key=True)
+    value = Column(Text)
+
+
 engine_url = os.getenv("DB_PATH", "sqlite:///./support_agent.db")
 engine = create_engine(engine_url, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

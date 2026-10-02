@@ -1,6 +1,19 @@
 from config import config
 
-def build_system_prompt(customer, tickets, memory_facts, interactions) -> str:
+def build_system_prompt(customer, tickets, memory_facts, interactions, settings: dict = None) -> str:
+    if settings is None:
+        settings = {
+            "adapt_tone": True,
+            "reference_past_tickets": True,
+            "reply_style": "Auto",
+            "escalation_frustration_threshold": 4.0
+        }
+
+    adapt_tone = settings.get("adapt_tone", True)
+    ref_past = settings.get("reference_past_tickets", True)
+    reply_style = settings.get("reply_style", "Auto")
+    frustration_thresh = float(settings.get("escalation_frustration_threshold", 4.0))
+
     prompt = f"""You are an expert AI Customer Support Agent for a software company.
 Your goal is to be helpful, efficient, and deeply empathetic. 
 
@@ -11,15 +24,28 @@ Environment: OS: {customer.os}, Version: {customer.product_version}, Device: {cu
 Current Frustration Level (1-5): {customer.frustration_score:.1f}
 """
 
-    if customer.frustration_score >= config.FRUSTRATION_EMPATHY_THRESHOLD:
-        prompt += "\n**IMPORTANT: The customer is frustrated. Be extremely empathetic, concise, and apologize for the inconvenience. Do not ask them to repeat information they have already provided.**\n"
+    if adapt_tone:
+        if customer.frustration_score >= frustration_thresh:
+            prompt += "\n**IMPORTANT: The customer is frustrated. Be extremely empathetic, concise, and apologize for the inconvenience. Do not ask them to repeat information they have already provided.**\n"
+        else:
+            prompt += "\n**The customer is currently calm. Be friendly, concise, and efficient.**\n"
     else:
-        prompt += "\n**The customer is currently calm. Be friendly, concise, and efficient.**\n"
+        prompt += "\n**Maintain a steady, professional, and standard support tone at all times.**\n"
 
-    if tickets:
+    # Style directives based on reply_style
+    if reply_style == "Always empathetic":
+        prompt += "\nREPLY STYLE DIRECTIVE: Always maintain a deeply empathetic, reassuring, warm, and supportive tone across all answers, acknowledging any difficulties.\n"
+    elif reply_style == "Always concise":
+        prompt += "\nREPLY STYLE DIRECTIVE: Always provide ultra-concise, direct, bullet-pointed, and actionable answers without conversational filler.\n"
+    else: # "Auto"
+        prompt += "\nREPLY STYLE DIRECTIVE: Dynamically balance empathy and brevity based on user urgency and context.\n"
+
+    if ref_past and tickets:
         prompt += "\nPAST TICKETS:\n"
         for t in tickets[:3]:
             prompt += f"- [{t.status}] Issue: {t.issue} (Resolution: {t.resolution or 'None'})\n"
+    elif not ref_past:
+        prompt += "\n(NOTE: Do not mention or reference past tickets in your reply.)\n"
 
     if memory_facts:
         prompt += "\nKNOWN FACTS & PREFERENCES (DO NOT SUGGEST FAILED SOLUTIONS):\n"

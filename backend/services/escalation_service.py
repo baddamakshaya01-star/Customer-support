@@ -3,25 +3,43 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import config
 
-def check_escalation(customer, tickets, memory_facts):
+from collections import Counter
+
+def check_escalation(customer, tickets, memory_facts, settings: dict = None):
     """
     Evaluates if the conversation should be escalated to a human.
+    Uses dynamic thresholds and options from settings table if provided.
     Returns (should_escalate: bool, summary: str | None)
     """
+    if settings:
+        frustration_thresh = float(settings.get("escalation_frustration_threshold", 4.0))
+        recurrence_thresh = int(settings.get("escalation_repeat_issue_threshold", 3))
+        auto_summary = settings.get("auto_handoff_summary", True)
+    else:
+        frustration_thresh = config.ESCALATION_FRUSTRATION_THRESHOLD
+        recurrence_thresh = config.ESCALATION_RECURRENCE_THRESHOLD
+        auto_summary = True
+
     escalate = False
     reasons = []
 
     # Rule 1: High Frustration
-    if customer.frustration_score >= config.ESCALATION_FRUSTRATION_THRESHOLD:
+    cust_score = customer.frustration_score if customer.frustration_score is not None else 1.0
+    if cust_score >= frustration_thresh:
         escalate = True
-        reasons.append(f"High customer frustration (Score: {customer.frustration_score:.1f}/5.0).")
+        reasons.append(f"High customer frustration (Score: {cust_score:.1f}/5.0 >= threshold {frustration_thresh:g}).")
 
-    # Rule 2: Recurring issues
-    # Count how many times "recurring_issue" is in memory facts
+    # Rule 2: Recurring issues (from memory facts or past tickets)
     recurring_count = sum(1 for f in memory_facts if f.get('fact_type') == 'recurring_issue')
-    if recurring_count >= config.ESCALATION_RECURRENCE_THRESHOLD:
+    issue_counts = Counter(t.issue.strip().lower() for t in tickets if t.issue)
+    max_ticket_repeat = max(issue_counts.values()) if issue_counts else 0
+
+    if recurring_count >= recurrence_thresh:
         escalate = True
-        reasons.append("Customer has experienced multiple recurring issues.")
+        reasons.append(f"Customer has {recurring_count} recurring issue memories (threshold: {recurrence_thresh}).")
+    elif max_ticket_repeat >= recurrence_thresh:
+        escalate = True
+        reasons.append(f"Customer has experienced the same issue {max_ticket_repeat} times (threshold: {recurrence_thresh}).")
 
     # Rule 3: Many open/escalated tickets recently
     open_tickets = [t for t in tickets if t.status in ['Open', 'Escalated']]
@@ -31,6 +49,9 @@ def check_escalation(customer, tickets, memory_facts):
 
     if not escalate:
         return False, None
+
+    if not auto_summary:
+        return True, None
 
     summary = "HANDOFF SUMMARY:\n"
     summary += f"- Customer: {customer.name} ({customer.email})\n"
@@ -43,3 +64,4 @@ def check_escalation(customer, tickets, memory_facts):
         summary += f"  * [{f.get('fact_type', 'FACT')}] {f.get('description', '')}\n"
 
     return True, summary
+

@@ -56,7 +56,7 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 Knowledge Base
             </a>
-            <a href="#" class="csb-nav-item" id="nav-settings" data-page="settings">
+            <a href="#settings" class="csb-nav-item" id="nav-settings" data-page="settings">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 Settings
             </a>
@@ -639,10 +639,290 @@
             </div>
         </div>
         <div class="page-content hidden" id="page-settings">
-            <div class="placeholder-page">
-                <div class="placeholder-icon">⚙️</div>
-                <h2>Settings</h2>
-                <p>System configuration: Escalation threshold = 4.0, Recurrence threshold = 3.</p>
+            <div class="settings-page-layout">
+                <!-- Page Header -->
+                <div class="settings-page-header">
+                    <div class="settings-header-left">
+                        <div class="settings-title-row">
+                            <h1 class="page-title">Settings</h1>
+                            <span class="settings-status-pill">
+                                <span class="pill-dot"></span> Live Config
+                            </span>
+                        </div>
+                        <p class="page-sub">Manage escalation triggers, agent behavior heuristics, memory persistence, and system appearance.</p>
+                    </div>
+                </div>
+
+                <!-- Form container -->
+                <form id="settings-form" class="settings-sections" onsubmit="return false;">
+                    
+                    <!-- Section 1: Escalation rules -->
+                    <div class="settings-card" id="section-escalation">
+                        <div class="settings-card-header">
+                            <div class="settings-card-icon red">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            </div>
+                            <div class="settings-card-title-group">
+                                <h2 class="settings-card-title">1. Escalation Rules</h2>
+                                <p class="settings-card-desc">Define automated thresholds for flagging accounts and initiating human handoff.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <!-- Frustration threshold -->
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label" for="setting-frustration-thresh">Frustration threshold</label>
+                                    <p class="settings-item-desc">Scores from 1 (Calm) to 5 (Critical). Escalation triggers at or above this value.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <div class="number-stepper">
+                                        <button type="button" class="stepper-btn" id="btn-frustration-minus" aria-label="Decrease frustration threshold">−</button>
+                                        <input type="number" id="setting-frustration-thresh" class="stepper-input" min="1" max="5" step="1" value="4">
+                                        <button type="button" class="stepper-btn" id="btn-frustration-plus" aria-label="Increase frustration threshold">+</button>
+                                    </div>
+                                    <div class="stepper-badge" id="frustration-level-indicator">Level 4 / 5 (High)</div>
+                                </div>
+                            </div>
+
+                            <div class="settings-divider"></div>
+
+                            <!-- Repeat issue threshold -->
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label" for="setting-repeat-thresh">Repeat issue threshold</label>
+                                    <p class="settings-item-desc">Number of times the same issue or recurring complaint is encountered before auto-escalating.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <div class="number-stepper">
+                                        <button type="button" class="stepper-btn" id="btn-repeat-minus" aria-label="Decrease repeat issue threshold">−</button>
+                                        <input type="number" id="setting-repeat-thresh" class="stepper-input" min="1" max="10" step="1" value="3">
+                                        <button type="button" class="stepper-btn" id="btn-repeat-plus" aria-label="Increase repeat issue threshold">+</button>
+                                    </div>
+                                    <div class="stepper-badge neutral" id="repeat-level-indicator">3 Occurrences</div>
+                                </div>
+                            </div>
+
+                            <div class="settings-divider"></div>
+
+                            <!-- Toggle: Generate handoff summary automatically -->
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label" for="setting-auto-summary">Generate handoff summary automatically</label>
+                                    <p class="settings-item-desc">Generates a concise dossier covering customer profile, OS environment, and escalation reasons for human review.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <label class="switch-toggle" for="setting-auto-summary">
+                                        <input type="checkbox" id="setting-auto-summary" checked>
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Agent behavior -->
+                    <div class="settings-card" id="section-agent-behavior">
+                        <div class="settings-card-header">
+                            <div class="settings-card-icon indigo">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 3.3 2 6.1 4.9 7.3L8 21l4-2 4 2-.9-3.7A8 8 0 0 0 12 2z"/></svg>
+                            </div>
+                            <div class="settings-card-title-group">
+                                <h2 class="settings-card-title">2. Agent Behavior</h2>
+                                <p class="settings-card-desc">Control dialogue personality, historical awareness, and contextual adaptation.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <!-- Toggle: Adapt tone to customer frustration -->
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label" for="setting-adapt-tone">Adapt tone to customer frustration</label>
+                                    <p class="settings-item-desc">Switches to hyper-empathetic, validating, and supportive language when frustration is detected.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <label class="switch-toggle" for="setting-adapt-tone">
+                                        <input type="checkbox" id="setting-adapt-tone" checked>
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="settings-divider"></div>
+
+                            <!-- Toggle: Reference past tickets in replies -->
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label" for="setting-ref-past-tickets">Reference past tickets in replies</label>
+                                    <p class="settings-item-desc">Incorporates customer ticket history and previous resolutions directly into prompt context.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <label class="switch-toggle" for="setting-ref-past-tickets">
+                                        <input type="checkbox" id="setting-ref-past-tickets" checked>
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="settings-divider"></div>
+
+                            <!-- Dropdown: Reply style -->
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label" for="setting-reply-style">Reply style</label>
+                                    <p class="settings-item-desc">Select the baseline persona and formatting style enforced for AI responses.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <div class="custom-select-wrap">
+                                        <select id="setting-reply-style" class="settings-select">
+                                            <option value="Auto">Auto</option>
+                                            <option value="Always empathetic">Always empathetic</option>
+                                            <option value="Always concise">Always concise</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Memory -->
+                    <div class="settings-card" id="section-memory">
+                        <div class="settings-card-header">
+                            <div class="settings-card-icon green">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                            </div>
+                            <div class="settings-card-title-group">
+                                <h2 class="settings-card-title">3. Memory</h2>
+                                <p class="settings-card-desc">Persistent relational entities and memory vectors stored in the local SQLite engine.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <!-- Read-only counters -->
+                            <div class="memory-counters-grid">
+                                <div class="memory-counter-box">
+                                    <div class="counter-label">Customers</div>
+                                    <div class="counter-value" id="settings-count-customers">0</div>
+                                    <div class="counter-sub">Active profiles</div>
+                                </div>
+                                <div class="memory-counter-box">
+                                    <div class="counter-label">Tickets</div>
+                                    <div class="counter-value" id="settings-count-tickets">0</div>
+                                    <div class="counter-sub">Historical records</div>
+                                </div>
+                                <div class="memory-counter-box">
+                                    <div class="counter-label">Memories Stored</div>
+                                    <div class="counter-value" id="settings-count-memories">0</div>
+                                    <div class="counter-sub">Attributes &amp; facts</div>
+                                </div>
+                            </div>
+
+                            <div class="settings-divider"></div>
+
+                            <!-- Action Buttons -->
+                            <div class="memory-actions-row">
+                                <div class="memory-action-info">
+                                    <div class="action-heading">Database Maintenance</div>
+                                    <div class="action-desc">Reload demo customers and sample tickets, or wipe all customer records from local storage.</div>
+                                </div>
+                                <div class="memory-buttons-group">
+                                    <button type="button" class="btn-settings-secondary" id="btn-reload-demo">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                        Reload demo data
+                                    </button>
+                                    <button type="button" class="btn-settings-danger" id="btn-clear-memory">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        Clear all memory
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: AI model (read-only status) -->
+                    <div class="settings-card" id="section-ai-model">
+                        <div class="settings-card-header">
+                            <div class="settings-card-icon cyan">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                            </div>
+                            <div class="settings-card-title-group">
+                                <div class="title-with-badge">
+                                    <h2 class="settings-card-title">4. AI Model</h2>
+                                    <span class="read-only-chip">Read-only status</span>
+                                </div>
+                                <p class="settings-card-desc">Active inference provider and deployment runtime configuration.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="ai-status-grid">
+                                <div class="ai-status-card">
+                                    <div class="ai-prop-label">Provider</div>
+                                    <div class="ai-prop-val" id="ai-model-provider">Azure OpenAI</div>
+                                </div>
+                                <div class="ai-status-card">
+                                    <div class="ai-prop-label">Deployment Name</div>
+                                    <div class="ai-prop-val font-mono" id="ai-deployment-name">—</div>
+                                </div>
+                                <div class="ai-status-card">
+                                    <div class="ai-prop-label">Status</div>
+                                    <div class="ai-status-badge-wrap">
+                                        <span class="badge-status-pill not-configured" id="ai-status-badge">
+                                            <span class="badge-dot"></span>
+                                            <span id="ai-status-text">Not configured</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ai-security-note">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span>Security note: API credentials and endpoint secrets are isolated within backend environment variables and are never transmitted to or readable from the browser.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 5: Appearance -->
+                    <div class="settings-card" id="section-appearance">
+                        <div class="settings-card-header">
+                            <div class="settings-card-icon amber">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                            </div>
+                            <div class="settings-card-title-group">
+                                <h2 class="settings-card-title">5. Appearance</h2>
+                                <p class="settings-card-desc">Console color theme and visual workspace preference.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="settings-row">
+                                <div class="settings-label-col">
+                                    <label class="settings-item-label">Color Theme</label>
+                                    <p class="settings-item-desc">Choose between high-contrast dark console mode or sleek light theme.</p>
+                                </div>
+                                <div class="settings-control-col">
+                                    <div class="theme-segmented-control" id="theme-segmented-control">
+                                        <button type="button" class="theme-segment active" data-theme="dark" id="btn-theme-dark">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                                            Dark Mode
+                                        </button>
+                                        <button type="button" class="theme-segment" data-theme="light" id="btn-theme-light">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                                            Light Mode
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Action Bar -->
+                    <div class="settings-footer-bar">
+                        <div class="footer-status-text" id="settings-save-status">
+                            <span class="sync-dot"></span>
+                            <span>Ready to save configuration</span>
+                        </div>
+                        <button type="button" class="btn-save-settings" id="btn-save-settings">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span id="save-btn-text">Save changes</span>
+                        </button>
+                    </div>
+
+                </form>
             </div>
         </div>
     </div>
@@ -673,6 +953,34 @@
         </div>
     </div>
 </div>
+
+<!-- ── Confirm Action Modal ──────────────────────────── -->
+<div id="confirm-action-modal" class="modal-overlay hidden">
+    <div class="modal-box confirm-box">
+        <div class="modal-header">
+            <div class="modal-icon warning" id="confirm-modal-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+                <h2 id="confirm-modal-title">Confirm Action</h2>
+                <p class="modal-sub" id="confirm-modal-sub">Please confirm to proceed</p>
+            </div>
+            <button class="modal-close" id="close-confirm-modal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p id="confirm-modal-message" class="confirm-message-text"></p>
+        </div>
+        <div class="modal-footer">
+            <button id="btn-cancel-confirm" class="btn-secondary">Cancel</button>
+            <button id="btn-execute-confirm" class="btn-primary">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Toast Container ───────────────────────────────── -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
 
 <script src="app.js"></script>
 </body>

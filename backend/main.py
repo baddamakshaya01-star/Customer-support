@@ -82,9 +82,69 @@ def get_customer_memory(customer_id: str, db: Session = Depends(get_db)):
 
 # ── Console API Endpoints ──────────────────────────────────────────
 
-from database import Customer, Ticket
+from database import Customer, Ticket, Setting
+from services.settings_service import SettingsService
 from collections import Counter
 from datetime import datetime
+
+class SettingsUpdateRequest(BaseModel):
+    escalation_frustration_threshold: float | None = None
+    escalation_repeat_issue_threshold: int | None = None
+    auto_handoff_summary: bool | None = None
+    adapt_tone: bool | None = None
+    reference_past_tickets: bool | None = None
+    reply_style: str | None = None
+    theme: str | None = None
+
+@app.get("/settings")
+def get_settings_endpoint(db: Session = Depends(get_db)):
+    settings = SettingsService.get_all(db)
+    ai_model = SettingsService.get_ai_model_status()
+    memory_stats = SettingsService.get_memory_stats(db)
+    return {
+        **settings,
+        "ai_model": ai_model,
+        "memory_stats": memory_stats
+    }
+
+@app.put("/settings")
+def update_settings_endpoint(payload: SettingsUpdateRequest, db: Session = Depends(get_db)):
+    updates = payload.model_dump(exclude_unset=True) if hasattr(payload, 'model_dump') else payload.dict(exclude_unset=True)
+    updated_settings = SettingsService.update_all(db, updates)
+    ai_model = SettingsService.get_ai_model_status()
+    memory_stats = SettingsService.get_memory_stats(db)
+    return {
+        **updated_settings,
+        "ai_model": ai_model,
+        "memory_stats": memory_stats,
+        "message": "Settings saved successfully"
+    }
+
+@app.post("/admin/reseed")
+def admin_reseed(db: Session = Depends(get_db)):
+    from seed_data import seed
+    seed()
+    memory_stats = SettingsService.get_memory_stats(db)
+    return {
+        "ok": True,
+        "message": "Demo data reloaded successfully",
+        "memory_stats": memory_stats
+    }
+
+@app.post("/admin/clear-memory")
+def admin_clear_memory(db: Session = Depends(get_db)):
+    db.query(Ticket).delete()
+    db.query(Customer).delete()
+    db.commit()
+    return {
+        "ok": True,
+        "message": "All memory cleared successfully",
+        "memory_stats": {
+            "customers": 0,
+            "tickets": 0,
+            "memories_stored": 0
+        }
+    }
 
 def _fmt_date(dt):
     return dt.strftime("%Y-%m-%d") if dt else None
@@ -139,6 +199,11 @@ def list_tickets(db: Session = Depends(get_db)):
 
 @app.get("/escalations")
 def list_escalations(db: Session = Depends(get_db)):
+    settings = SettingsService.get_all(db)
+    frust_thresh = settings.get("escalation_frustration_threshold", 4.0)
+    repeat_thresh = settings.get("escalation_repeat_issue_threshold", 3)
+    auto_summary_enabled = settings.get("auto_handoff_summary", True)
+
     customers = db.query(Customer).all()
     result = []
     for c in customers:
@@ -146,15 +211,15 @@ def list_escalations(db: Session = Depends(get_db)):
         open_tix = [t for t in tickets if t.status in ["Open", "Escalated"]]
 
         reasons = []
-        if (c.frustration_score or 0) >= 4.0:
-            reasons.append(f"Frustration >= 4 (Score: {c.frustration_score:.1f}/5.0)")
+        if (c.frustration_score or 0) >= frust_thresh:
+            reasons.append(f"Frustration >= {frust_thresh:g} (Score: {c.frustration_score:.1f}/5.0)")
 
-        # Check same issue 3+ times or recurring issues
+        # Check same issue repeat_thresh+ times or recurring issues
         issue_counts = Counter(t.issue.strip().lower() for t in tickets if t.issue)
         for iss_text, count in issue_counts.items():
-            if count >= 3:
+            if count >= repeat_thresh:
                 reasons.append(f"Same issue {count} times: '{iss_text.title()}'")
-            elif count == 2:
+            elif count == 2 and repeat_thresh <= 2:
                 reasons.append(f"Recurring issue (2 occurrences): '{iss_text.title()}'")
 
         if len(open_tix) >= 2 and not any("open" in r.lower() for r in reasons):
@@ -163,16 +228,20 @@ def list_escalations(db: Session = Depends(get_db)):
         if not reasons:
             continue
 
-        summary_lines = [
-            f"Customer: {c.name} ({c.email})",
-            f"Plan: {c.plan} | OS: {c.os} | Device: {c.device}",
-            f"Frustration Score: {c.frustration_score:.1f}/5.0",
-            "Reasons for Escalation:",
-            *[f"  - {r}" for r in reasons],
-        ]
-        if open_tix:
-            summary_lines.append("Open Tickets:")
-            summary_lines.extend(f"  - [{t.status}] {t.issue}" for t in open_tix[:3])
+        if auto_summary_enabled:
+            summary_lines = [
+                f"Customer: {c.name} ({c.email})",
+                f"Plan: {c.plan} | OS: {c.os} | Device: {c.device}",
+                f"Frustration Score: {c.frustration_score:.1f}/5.0",
+                "Reasons for Escalation:",
+                *[f"  - {r}" for r in reasons],
+            ]
+            if open_tix:
+                summary_lines.append("Open Tickets:")
+                summary_lines.extend(f"  - [{t.status}] {t.issue}" for t in open_tix[:3])
+            summary_text = "\n".join(summary_lines)
+        else:
+            summary_text = "Automatic handoff summary disabled in settings."
 
         result.append({
             "customer_id": c.id,
@@ -181,11 +250,12 @@ def list_escalations(db: Session = Depends(get_db)):
             "plan": c.plan,
             "frustration_score": round(c.frustration_score or 1.0, 1),
             "reasons": reasons,
-            "handoff_summary": "\n".join(summary_lines),
+            "handoff_summary": summary_text,
             "status": "escalated" if any(t.status == "Escalated" for t in tickets) else "pending",
         })
 
     return sorted(result, key=lambda x: x["frustration_score"], reverse=True)
+
 
 @app.patch("/escalations/{customer_id}/resolve")
 def resolve_escalation(customer_id: str, db: Session = Depends(get_db)):
