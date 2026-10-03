@@ -32,8 +32,19 @@ def on_startup():
     db = next(get_db())
     try:
         KBService.seed_articles(db)
+        from database import Customer
+        if db.query(Customer).count() == 0:
+            import seed_data
+            seed_data.seed()
     finally:
         db.close()
+
+@app.get("/seed")
+@app.post("/seed")
+def trigger_seed():
+    import seed_data
+    seed_data.seed()
+    return {"status": "success", "message": "Database seeded with demo customers, tickets, and knowledge base articles!"}
 
 @app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
