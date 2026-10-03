@@ -1,6 +1,7 @@
 # =============================================
 # Python - Byte-compiled / optimized / DLL files
 # =============================================
+AURA 2.O/
 __pycache__/
 *.py[codz]
 *$py.class
