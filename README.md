@@ -1,6 +1,6 @@
 # AI Customer Support Agent with Persistent Memory
 
-A Microsoft Hackathon MVP project that demonstrates a customer support AI with long-term memory. It remembers past conversations, environment details, what solutions worked/failed, and tracks customer frustration to trigger human escalation.
+A  MVP project that demonstrates a customer support AI with long-term memory. It remembers past conversations, environment details, what solutions worked/failed, and tracks customer frustration to trigger human escalation.
 
 ## Architecture
 
